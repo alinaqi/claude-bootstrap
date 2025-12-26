@@ -4,17 +4,17 @@
 
 For building autonomous AI agents that perform multi-step tasks with tools.
 
-**Sources:** [Anthropic Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) | [Google Gemini Agent Development](https://developers.googleblog.com/en/building-agents-google-gemini-open-source-frameworks/) | [OpenAI Building Agents](https://developers.openai.com/tracks/building-agents/) | [Pydantic AI](https://ai.pydantic.dev/)
+**Sources:** [Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-agent-sdk) | [Anthropic Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) | [Pydantic AI](https://ai.pydantic.dev/) | [Google Gemini Agent Development](https://developers.googleblog.com/en/building-agents-google-gemini-open-source-frameworks/) | [OpenAI Building Agents](https://developers.openai.com/tracks/building-agents/)
 
 ---
 
 ## Framework Selection by Language
 
-| Language | Default Framework | Why |
-|----------|-------------------|-----|
+| Language/Framework | Default | Why |
+|-------------------|---------|-----|
 | **Python** | **Pydantic AI** | Type-safe, Pydantic validation, multi-model, production-ready |
-| **TypeScript** | Vercel AI SDK | Streaming, React integration, edge-ready |
-| **TypeScript (OpenAI)** | OpenAI Agents SDK | Native tool use, structured outputs |
+| **Node.js / Next.js** | **Claude Agent SDK** | Official Anthropic SDK, tools, multi-agent, type-safe |
+| **Frontend UI** | Vercel AI SDK | Streaming UI only (not agentic) |
 
 ### Python: Pydantic AI (Default)
 ```python
@@ -38,15 +38,59 @@ for item in result.data:
     print(f"{item.title}: {item.url}")
 ```
 
-### TypeScript: Vercel AI SDK
+### Node.js / Next.js: Claude Agent SDK (Default)
 ```typescript
-import { generateText } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
+import Anthropic from "@anthropic-ai/sdk";
 
-const result = await generateText({
-  model: anthropic('claude-sonnet-4-20250514'),
-  prompt: 'Research AI agent patterns',
-});
+const client = new Anthropic();
+
+// Define tools
+const tools: Anthropic.Tool[] = [
+  {
+    name: "web_search",
+    description: "Search the web for information",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search query" },
+      },
+      required: ["query"],
+    },
+  },
+];
+
+// Agentic loop
+async function runAgent(prompt: string) {
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: prompt },
+  ];
+
+  while (true) {
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4096,
+      tools,
+      messages,
+    });
+
+    // Check for tool use
+    if (response.stop_reason === "tool_use") {
+      const toolUse = response.content.find((b) => b.type === "tool_use");
+      if (toolUse) {
+        const result = await executeTool(toolUse.name, toolUse.input);
+        messages.push({ role: "assistant", content: response.content });
+        messages.push({
+          role: "user",
+          content: [{ type: "tool_result", tool_use_id: toolUse.id, content: result }],
+        });
+        continue;
+      }
+    }
+
+    // Done - return final response
+    return response.content.find((b) => b.type === "text")?.text;
+  }
+}
 ```
 
 ---
