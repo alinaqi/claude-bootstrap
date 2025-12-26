@@ -226,4 +226,4 @@ MIT - See [LICENSE](LICENSE)
 
 ## Credits
 
-Built from learnings across projects at [Zenloop](https://zenloop.com), [Protaige](https://protaige.com), and [eduBITES](https://edubites.com).
+Built on learnings from 100+ projects across customer experience management, agentic AI platforms, mobile apps, and full-stack web applications.
