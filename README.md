@@ -104,6 +104,7 @@ Define before you build:
 | `security.md` | OWASP patterns, secrets management, security testing |
 | `ui-web.md` | Web UI - glassmorphism, Tailwind, dark mode, accessibility |
 | `ui-mobile.md` | Mobile UI - React Native, iOS/Android patterns, touch targets |
+| `ui-testing.md` | Visual testing - catch invisible buttons, broken layouts, contrast |
 | `project-tooling.md` | gh, vercel, supabase CLI integration |
 | `python.md` | Python + ruff + mypy + pytest |
 | `typescript.md` | TypeScript strict + eslint + jest |
