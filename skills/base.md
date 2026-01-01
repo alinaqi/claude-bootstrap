@@ -167,6 +167,14 @@ How to verify this is complete:
 ### Dependencies
 - Depends on: [TODO-xxx] (if any)
 - Blocks: [TODO-yyy] (if any)
+
+### TDD Execution Log
+| Phase | Command | Result | Timestamp |
+|-------|---------|--------|-----------|
+| RED | `[test command]` | - | - |
+| GREEN | `[test command]` | - | - |
+| VALIDATE | `[lint && typecheck && test --coverage]` | - | - |
+| COMPLETE | Moved to completed.md | - | - |
 ```
 
 ### Todo Rules
@@ -175,6 +183,91 @@ How to verify this is complete:
 3. **Sized** - If larger than "M", break it down further
 4. **Independent** - Minimize dependencies between todos
 5. **Tracked** - Move between active.md → completed.md when done
+
+### Todo Execution Workflow (TDD - Mandatory)
+
+**Every todo MUST follow this exact workflow. No exceptions.**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. RED: Write Tests First                                  │
+│     └─ Create test file(s) based on Test Cases table        │
+│     └─ Tests should cover all acceptance criteria           │
+│     └─ Run tests → ALL MUST FAIL (proves tests are valid)   │
+├─────────────────────────────────────────────────────────────┤
+│  2. GREEN: Implement the Feature                            │
+│     └─ Write minimum code to make tests pass                │
+│     └─ Follow simplicity rules (20 lines/function, etc.)    │
+│     └─ Run tests → ALL MUST PASS                            │
+├─────────────────────────────────────────────────────────────┤
+│  3. VALIDATE: Quality Gates                                 │
+│     └─ Run linter (auto-fix if possible)                    │
+│     └─ Run type checker (tsc/mypy/pyright)                  │
+│     └─ Run full test suite with coverage                    │
+│     └─ Verify coverage threshold (≥80%)                     │
+├─────────────────────────────────────────────────────────────┤
+│  4. COMPLETE: Mark Done                                     │
+│     └─ Only after ALL validations pass                      │
+│     └─ Move todo to completed.md                            │
+│     └─ Checkpoint session state                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Execution Commands by Stack
+
+**Node.js/TypeScript:**
+```bash
+# 1. RED - Run tests (expect failures)
+npm test -- --grep "todo-description"
+
+# 2. GREEN - Run tests (expect pass)
+npm test -- --grep "todo-description"
+
+# 3. VALIDATE - Full quality check
+npm run lint && npm run typecheck && npm test -- --coverage
+```
+
+**Python:**
+```bash
+# 1. RED - Run tests (expect failures)
+pytest -k "todo_description" -v
+
+# 2. GREEN - Run tests (expect pass)
+pytest -k "todo_description" -v
+
+# 3. VALIDATE - Full quality check
+ruff check . && mypy . && pytest --cov --cov-fail-under=80
+```
+
+**React/Next.js:**
+```bash
+# 1. RED - Run tests (expect failures)
+npm test -- --testPathPattern="ComponentName"
+
+# 2. GREEN - Run tests (expect pass)
+npm test -- --testPathPattern="ComponentName"
+
+# 3. VALIDATE - Full quality check
+npm run lint && npm run typecheck && npm test -- --coverage --watchAll=false
+```
+
+#### Blocking Conditions
+
+**NEVER mark a todo as complete if:**
+- ❌ Tests were not written first (skipped RED phase)
+- ❌ Tests did not fail initially (invalid tests)
+- ❌ Any test is failing
+- ❌ Linter has errors (warnings may be acceptable)
+- ❌ Type checker has errors
+- ❌ Coverage dropped below threshold
+
+**If blocked by failures:**
+```markdown
+## [TODO-042] - BLOCKED
+
+**Blocking Reason:** [Lint error in X / Test failure in Y / Coverage at 75%]
+**Action Required:** [Specific fix needed]
+```
 
 ### Example Atomic Todo
 ```markdown
@@ -209,6 +302,14 @@ Validate email format on the signup form before submission. Show inline error if
 ### Dependencies
 - Depends on: [TODO-041] Signup form component
 - Blocks: [TODO-045] Signup flow integration test
+
+### TDD Execution Log
+| Phase | Command | Result | Timestamp |
+|-------|---------|--------|-----------|
+| RED | `npm test -- --grep "email validation"` | 5 tests failed ✓ | - |
+| GREEN | `npm test -- --grep "email validation"` | 5 tests passed ✓ | - |
+| VALIDATE | `npm run lint && npm run typecheck && npm test -- --coverage` | Pass, 84% coverage ✓ | - |
+| COMPLETE | Moved to completed.md | ✓ | - |
 ```
 
 ---
@@ -308,12 +409,16 @@ After completing any task, ask:
 
 ## Response Format
 
-When implementing features:
-1. Clarify requirements if ambiguous
-2. Propose structure first - outline before code
-3. Implement incrementally - small, testable chunks
-4. Write tests alongside code
-5. Flag complexity - warn if approaching limits
-6. **Checkpoint after completing** - update session state
+When implementing features (following TDD):
+1. **Clarify requirements** if ambiguous
+2. **Propose structure** - outline before code
+3. **Write tests FIRST** - based on test cases table (RED phase)
+4. **Run tests to verify they fail** - proves tests are valid
+5. **Implement minimum code** to make tests pass (GREEN phase)
+6. **Run full validation** - lint, typecheck, coverage (VALIDATE phase)
+7. **Flag complexity** - warn if approaching limits
+8. **Checkpoint after completing** - update session state, log TDD execution
+
+**TDD is non-negotiable.** Tests must exist and fail before any implementation begins.
 
 When you notice code violating these rules, **stop and refactor** before continuing.
