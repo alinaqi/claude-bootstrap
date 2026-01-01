@@ -1,6 +1,6 @@
 # Claude Bootstrap
 
-> An opinionated project initialization system for Claude Code. **TDD-first, security-first, spec-driven, AI-native.**
+> An opinionated project initialization system for Claude Code. **TDD-first, iterative loops, security-first, AI-native.**
 
 **The bottleneck has moved from code generation to code comprehension.** AI can generate infinite code, but humans still need to review, understand, and maintain it. Claude Bootstrap provides guardrails that keep AI-generated code simple, secure, and verifiable.
 
@@ -8,6 +8,12 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
+│  ITERATIVE LOOPS BY DEFAULT                                    │
+│  ─────────────────────────────────────────────────────────────│
+│  Every task runs in a self-referential loop until tests pass.  │
+│  Claude iterates autonomously. You describe what, not how.     │
+│  Powered by Ralph Wiggum - iteration > perfection.             │
+├────────────────────────────────────────────────────────────────┤
 │  TESTS FIRST, ALWAYS                                           │
 │  ─────────────────────────────────────────────────────────────│
 │  Features: Write tests → Watch them fail → Implement → Pass    │
@@ -55,6 +61,44 @@ Claude will:
 3. **Set up repository** - Create or connect GitHub repo
 4. **Create structure** - Skills, security, CI/CD, specs, todos
 5. **Prompt for specs** - Transition to defining first feature
+
+## Automatic Iterative Loops (Ralph Wiggum)
+
+**You talk naturally. Claude automatically runs iterative TDD loops.**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  You say: "Add email validation to signup"                  │
+├─────────────────────────────────────────────────────────────┤
+│  Claude automatically:                                       │
+│  1. Extracts requirements from your request                 │
+│  2. Structures as TDD loop with completion criteria         │
+│  3. Runs /ralph-loop with tests as exit condition           │
+│  4. Iterates until all tests pass + lint clean              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+No need to manually invoke `/ralph-loop`. Just describe what you want:
+
+| You Say | Claude Does |
+|---------|-------------|
+| "Add user authentication" | Loops until auth tests pass |
+| "Fix the login bug" | Finds test gap → writes test → loops until fixed |
+| "Build a REST API for todos" | Loops until all endpoint tests pass |
+| "Refactor the auth module" | Loops with tests as safety net |
+
+**Opt-out phrases** (for when you don't want loops):
+- "Just explain..." → explanation only
+- "Quick fix..." → one-liner, no loop
+- "Don't loop..." → explicit opt-out
+
+### Setup Ralph Wiggum Plugin
+
+```bash
+# Clone Claude Code repo and copy plugin
+git clone https://github.com/anthropics/claude-code.git /tmp/claude-code
+cp -r /tmp/claude-code/plugins/ralph-wiggum ~/.claude/plugins/
+```
 
 ## What Gets Created
 
