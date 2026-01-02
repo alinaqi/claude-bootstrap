@@ -200,7 +200,7 @@ Define before you build:
 2. **Atomic todos** with validation criteria and test cases
 3. **Move, don't delete** - Completed todos go to `completed.md` for reference
 
-## Skills Included (33 Skills)
+## Skills Included (34 Skills)
 
 ### Core Skills
 | Skill | Purpose |
@@ -249,6 +249,7 @@ Define before you build:
 ### Content & SEO Skills
 | Skill | Purpose |
 |-------|---------|
+| `aeo-optimization.md` | AI Engine Optimization - semantic triples, page templates, content clusters for AI citations |
 | `web-content.md` | SEO + AI discovery (GEO) - schema, content structure, ChatGPT/Perplexity optimization |
 | `site-architecture.md` | Technical SEO - robots.txt, sitemap, meta tags, AI crawler handling, Core Web Vitals |
 
