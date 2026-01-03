@@ -100,6 +100,35 @@ git clone https://github.com/anthropics/claude-code.git /tmp/claude-code
 cp -r /tmp/claude-code/plugins/ralph-wiggum ~/.claude/plugins/
 ```
 
+## Commit Hygiene (Automatic PR Size Management)
+
+**Claude monitors your changes and advises when to commit before PRs become too large.**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  COMMIT SIZE THRESHOLDS                                     │
+├─────────────────────────────────────────────────────────────┤
+│  🟢 OK:     ≤ 5 files,  ≤ 200 lines                         │
+│  🟡 WARN:   6-10 files, 201-400 lines  → "Commit soon"      │
+│  🔴 STOP:   > 10 files, > 400 lines    → "Commit NOW"       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Claude automatically checks and advises:**
+
+| Status | Claude Says |
+|--------|-------------|
+| 3 files, 95 lines | ✅ Tests passing. Good time to commit! |
+| 7 files, 225 lines | 💡 Approaching threshold. Consider committing. |
+| 12 files, 400 lines | ⚠️ Changes too large! Commit now. |
+
+**Why this matters:**
+- PRs < 200 lines: 15% defect rate
+- PRs 200-400 lines: 23% defect rate
+- PRs > 400 lines: 40%+ defect rate (rubber-stamped, not reviewed)
+
+**Atomic commit principle:** If you need "and" to describe your commit, split it.
+
 ## What Gets Created
 
 ```
