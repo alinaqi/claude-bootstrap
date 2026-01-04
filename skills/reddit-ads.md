@@ -1202,6 +1202,771 @@ export const redditAdsMocks = [
 
 ---
 
+---
+
+## Agentic Optimization Service
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  AGENTIC REDDIT ADS OPTIMIZER                                   │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │  Scheduler  │───▶│  Analyzer   │───▶│  Optimizer  │         │
+│  │  (Cron)     │    │  (AI/LLM)   │    │  (Actions)  │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│         │                  │                  │                 │
+│         ▼                  ▼                  ▼                 │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│  │  Fetch      │    │  Decide     │    │  Execute    │         │
+│  │  Reports    │    │  Strategy   │    │  Changes    │         │
+│  └─────────────┘    └─────────────┘    └─────────────┘         │
+│                                                                 │
+│  Loop: Every 4-6 hours                                          │
+│  Actions: Pause losers, scale winners, adjust bids, rotate ads  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Background Service (Node.js)
+
+```typescript
+// services/reddit-ads-optimizer.ts
+import Anthropic from '@anthropic-ai/sdk';
+import { CronJob } from 'cron';
+import RedditAdsClient from '../lib/reddit-ads-client';
+
+interface OptimizationConfig {
+  accountId: string;
+  accessToken: string;
+  refreshToken: string;
+  // Thresholds
+  minCTR: number;           // Pause ads below this CTR (e.g., 0.005 = 0.5%)
+  maxCPA: number;           // Pause ads above this CPA
+  minImpressions: number;   // Min impressions before decisions (e.g., 1000)
+  budgetScaleFactor: number; // Scale winning ad groups by this factor (e.g., 1.5)
+  // Optimization settings
+  optimizationGoal: 'CLICKS' | 'CONVERSIONS' | 'ROAS';
+  checkIntervalHours: number;
+}
+
+interface PerformanceData {
+  campaignId: string;
+  adGroupId: string;
+  adId: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+  ctr: number;
+  cpc: number;
+  cpa: number;
+  roas: number;
+}
+
+class RedditAdsOptimizerService {
+  private client: RedditAdsClient;
+  private anthropic: Anthropic;
+  private config: OptimizationConfig;
+  private cronJob: CronJob | null = null;
+
+  constructor(config: OptimizationConfig) {
+    this.config = config;
+    this.client = new RedditAdsClient({
+      accessToken: config.accessToken,
+      accountId: config.accountId
+    });
+    this.anthropic = new Anthropic();
+  }
+
+  // Start the background optimization service
+  start() {
+    const cronSchedule = `0 */${this.config.checkIntervalHours} * * *`;
+
+    this.cronJob = new CronJob(cronSchedule, async () => {
+      console.log(`[${new Date().toISOString()}] Running optimization cycle...`);
+      await this.runOptimizationCycle();
+    });
+
+    this.cronJob.start();
+    console.log(`Reddit Ads Optimizer started. Running every ${this.config.checkIntervalHours} hours.`);
+  }
+
+  stop() {
+    if (this.cronJob) {
+      this.cronJob.stop();
+      console.log('Reddit Ads Optimizer stopped.');
+    }
+  }
+
+  // Main optimization cycle
+  async runOptimizationCycle() {
+    try {
+      // 1. Fetch performance data
+      const performanceData = await this.fetchPerformanceData();
+
+      // 2. Analyze with AI agent
+      const recommendations = await this.analyzeWithAgent(performanceData);
+
+      // 3. Execute optimizations
+      await this.executeOptimizations(recommendations);
+
+      // 4. Log results
+      await this.logOptimizationResults(recommendations);
+
+    } catch (error) {
+      console.error('Optimization cycle failed:', error);
+      await this.sendAlert('Optimization cycle failed', error);
+    }
+  }
+
+  // Fetch last 24h performance data
+  private async fetchPerformanceData(): Promise<PerformanceData[]> {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+
+    const report = await this.client.getReport({
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0],
+      level: 'AD',
+      metrics: [
+        'impressions', 'clicks', 'spend', 'conversions',
+        'ctr', 'cpc', 'cpa', 'conversion_value'
+      ]
+    });
+
+    return report.data.map((row: any) => ({
+      campaignId: row.campaign_id,
+      adGroupId: row.ad_group_id,
+      adId: row.ad_id,
+      impressions: row.impressions,
+      clicks: row.clicks,
+      spend: row.spend,
+      conversions: row.conversions || 0,
+      ctr: row.ctr,
+      cpc: row.cpc,
+      cpa: row.cpa || 0,
+      roas: row.conversion_value ? row.conversion_value / row.spend : 0
+    }));
+  }
+
+  // AI-powered analysis and decision making
+  private async analyzeWithAgent(data: PerformanceData[]): Promise<OptimizationRecommendation[]> {
+    const prompt = `You are a Reddit Ads optimization agent. Analyze the following campaign performance data and recommend specific actions.
+
+## Performance Data (Last 24 Hours)
+${JSON.stringify(data, null, 2)}
+
+## Optimization Configuration
+- Goal: ${this.config.optimizationGoal}
+- Min CTR threshold: ${this.config.minCTR * 100}%
+- Max CPA threshold: $${this.config.maxCPA}
+- Min impressions for decisions: ${this.config.minImpressions}
+- Budget scale factor for winners: ${this.config.budgetScaleFactor}x
+
+## Your Task
+Analyze each ad/ad group and recommend ONE action per item:
+1. PAUSE - Poor performers (low CTR, high CPA, no conversions after sufficient impressions)
+2. SCALE - Winners (high CTR, low CPA, good ROAS) - increase budget
+3. ADJUST_BID - Moderate performers - suggest bid adjustment
+4. KEEP - Insufficient data or acceptable performance
+5. ROTATE_CREATIVE - Good targeting but ad fatigue (declining CTR over time)
+
+Return a JSON array of recommendations:
+[
+  {
+    "adId": "string",
+    "adGroupId": "string",
+    "action": "PAUSE|SCALE|ADJUST_BID|KEEP|ROTATE_CREATIVE",
+    "reason": "Brief explanation",
+    "newBidMicros": number (optional, for ADJUST_BID),
+    "budgetMultiplier": number (optional, for SCALE)
+  }
+]
+
+Be aggressive with pausing poor performers to protect budget. Be conservative with scaling (only clear winners).`;
+
+    const response = await this.anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const content = response.content[0];
+    if (content.type !== 'text') throw new Error('Unexpected response type');
+
+    // Extract JSON from response
+    const jsonMatch = content.text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON found in response');
+
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  // Execute the AI recommendations
+  private async executeOptimizations(recommendations: OptimizationRecommendation[]) {
+    for (const rec of recommendations) {
+      try {
+        switch (rec.action) {
+          case 'PAUSE':
+            await this.client.updateAd(rec.adId, { is_enabled: false });
+            console.log(`Paused ad ${rec.adId}: ${rec.reason}`);
+            break;
+
+          case 'SCALE':
+            const adGroup = await this.client.getAdGroup(rec.adGroupId);
+            const currentBudget = adGroup.budget_total_amount_micros;
+            const newBudget = Math.round(currentBudget * (rec.budgetMultiplier || this.config.budgetScaleFactor));
+            await this.client.updateAdGroup(rec.adGroupId, {
+              budget_total_amount_micros: newBudget
+            });
+            console.log(`Scaled ad group ${rec.adGroupId} budget to ${newBudget / 1_000_000}: ${rec.reason}`);
+            break;
+
+          case 'ADJUST_BID':
+            if (rec.newBidMicros) {
+              await this.client.updateAdGroup(rec.adGroupId, {
+                bid_amount_micros: rec.newBidMicros
+              });
+              console.log(`Adjusted bid for ${rec.adGroupId} to ${rec.newBidMicros / 1_000_000}: ${rec.reason}`);
+            }
+            break;
+
+          case 'ROTATE_CREATIVE':
+            // Flag for creative refresh (implement your creative rotation logic)
+            console.log(`Creative rotation needed for ${rec.adId}: ${rec.reason}`);
+            await this.flagForCreativeRefresh(rec.adId);
+            break;
+
+          case 'KEEP':
+            // No action needed
+            break;
+        }
+      } catch (error) {
+        console.error(`Failed to execute ${rec.action} for ${rec.adId}:`, error);
+      }
+    }
+  }
+
+  private async flagForCreativeRefresh(adId: string) {
+    // Implement: Add to queue, notify team, or auto-generate new creative
+  }
+
+  private async logOptimizationResults(recommendations: OptimizationRecommendation[]) {
+    const summary = {
+      timestamp: new Date().toISOString(),
+      totalRecommendations: recommendations.length,
+      actions: {
+        paused: recommendations.filter(r => r.action === 'PAUSE').length,
+        scaled: recommendations.filter(r => r.action === 'SCALE').length,
+        bidAdjusted: recommendations.filter(r => r.action === 'ADJUST_BID').length,
+        creativeRotation: recommendations.filter(r => r.action === 'ROTATE_CREATIVE').length,
+        kept: recommendations.filter(r => r.action === 'KEEP').length
+      }
+    };
+    console.log('Optimization Summary:', JSON.stringify(summary, null, 2));
+    // Store in database for historical analysis
+  }
+
+  private async sendAlert(subject: string, error: any) {
+    // Implement: Send email/Slack notification
+  }
+}
+
+interface OptimizationRecommendation {
+  adId: string;
+  adGroupId: string;
+  action: 'PAUSE' | 'SCALE' | 'ADJUST_BID' | 'KEEP' | 'ROTATE_CREATIVE';
+  reason: string;
+  newBidMicros?: number;
+  budgetMultiplier?: number;
+}
+
+export default RedditAdsOptimizerService;
+```
+
+### Background Service (Python)
+
+```python
+# services/reddit_ads_optimizer.py
+import anthropic
+import schedule
+import time
+import json
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+from enum import Enum
+
+from lib.reddit_ads_client import RedditAdsClient, RedditAdsConfig
+
+class OptimizationAction(Enum):
+    PAUSE = "PAUSE"
+    SCALE = "SCALE"
+    ADJUST_BID = "ADJUST_BID"
+    KEEP = "KEEP"
+    ROTATE_CREATIVE = "ROTATE_CREATIVE"
+
+@dataclass
+class OptimizationConfig:
+    account_id: str
+    access_token: str
+    refresh_token: str
+    min_ctr: float = 0.005  # 0.5%
+    max_cpa: float = 50.0
+    min_impressions: int = 1000
+    budget_scale_factor: float = 1.5
+    optimization_goal: str = "CONVERSIONS"
+    check_interval_hours: int = 4
+
+@dataclass
+class PerformanceData:
+    campaign_id: str
+    ad_group_id: str
+    ad_id: str
+    impressions: int
+    clicks: int
+    spend: float
+    conversions: int
+    ctr: float
+    cpc: float
+    cpa: float
+    roas: float
+
+@dataclass
+class OptimizationRecommendation:
+    ad_id: str
+    ad_group_id: str
+    action: OptimizationAction
+    reason: str
+    new_bid_micros: Optional[int] = None
+    budget_multiplier: Optional[float] = None
+
+class RedditAdsOptimizerService:
+    def __init__(self, config: OptimizationConfig):
+        self.config = config
+        self.client = RedditAdsClient(RedditAdsConfig(
+            access_token=config.access_token,
+            account_id=config.account_id
+        ))
+        self.anthropic = anthropic.Anthropic()
+        self._running = False
+
+    def start(self):
+        """Start the background optimization service."""
+        self._running = True
+
+        # Schedule optimization runs
+        schedule.every(self.config.check_interval_hours).hours.do(
+            self.run_optimization_cycle
+        )
+
+        print(f"Reddit Ads Optimizer started. Running every {self.config.check_interval_hours} hours.")
+
+        # Run immediately on start
+        self.run_optimization_cycle()
+
+        # Keep running
+        while self._running:
+            schedule.run_pending()
+            time.sleep(60)
+
+    def stop(self):
+        """Stop the optimization service."""
+        self._running = False
+        print("Reddit Ads Optimizer stopped.")
+
+    def run_optimization_cycle(self):
+        """Main optimization cycle."""
+        print(f"[{datetime.now().isoformat()}] Running optimization cycle...")
+
+        try:
+            # 1. Fetch performance data
+            performance_data = self._fetch_performance_data()
+
+            # 2. Analyze with AI agent
+            recommendations = self._analyze_with_agent(performance_data)
+
+            # 3. Execute optimizations
+            self._execute_optimizations(recommendations)
+
+            # 4. Log results
+            self._log_optimization_results(recommendations)
+
+        except Exception as e:
+            print(f"Optimization cycle failed: {e}")
+            self._send_alert("Optimization cycle failed", str(e))
+
+    def _fetch_performance_data(self) -> List[PerformanceData]:
+        """Fetch last 24h performance data."""
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=1)
+
+        report = self.client.get_report({
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d'),
+            'level': 'AD',
+            'metrics': [
+                'impressions', 'clicks', 'spend', 'conversions',
+                'ctr', 'cpc', 'cpa', 'conversion_value'
+            ]
+        })
+
+        return [
+            PerformanceData(
+                campaign_id=row['campaign_id'],
+                ad_group_id=row['ad_group_id'],
+                ad_id=row['ad_id'],
+                impressions=row['impressions'],
+                clicks=row['clicks'],
+                spend=row['spend'],
+                conversions=row.get('conversions', 0),
+                ctr=row['ctr'],
+                cpc=row['cpc'],
+                cpa=row.get('cpa', 0),
+                roas=row.get('conversion_value', 0) / row['spend'] if row['spend'] > 0 else 0
+            )
+            for row in report.get('data', [])
+        ]
+
+    def _analyze_with_agent(self, data: List[PerformanceData]) -> List[OptimizationRecommendation]:
+        """AI-powered analysis and decision making."""
+
+        prompt = f"""You are a Reddit Ads optimization agent. Analyze the following campaign performance data and recommend specific actions.
+
+## Performance Data (Last 24 Hours)
+{json.dumps([vars(d) for d in data], indent=2)}
+
+## Optimization Configuration
+- Goal: {self.config.optimization_goal}
+- Min CTR threshold: {self.config.min_ctr * 100}%
+- Max CPA threshold: ${self.config.max_cpa}
+- Min impressions for decisions: {self.config.min_impressions}
+- Budget scale factor for winners: {self.config.budget_scale_factor}x
+
+## Your Task
+Analyze each ad/ad group and recommend ONE action per item:
+1. PAUSE - Poor performers (low CTR, high CPA, no conversions after sufficient impressions)
+2. SCALE - Winners (high CTR, low CPA, good ROAS) - increase budget
+3. ADJUST_BID - Moderate performers - suggest bid adjustment
+4. KEEP - Insufficient data or acceptable performance
+5. ROTATE_CREATIVE - Good targeting but ad fatigue (declining CTR over time)
+
+Return a JSON array of recommendations:
+[
+  {{
+    "ad_id": "string",
+    "ad_group_id": "string",
+    "action": "PAUSE|SCALE|ADJUST_BID|KEEP|ROTATE_CREATIVE",
+    "reason": "Brief explanation",
+    "new_bid_micros": number (optional, for ADJUST_BID),
+    "budget_multiplier": number (optional, for SCALE)
+  }}
+]
+
+Be aggressive with pausing poor performers to protect budget. Be conservative with scaling (only clear winners)."""
+
+        response = self.anthropic.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = response.content[0].text
+
+        # Extract JSON from response
+        import re
+        json_match = re.search(r'\[[\s\S]*\]', content)
+        if not json_match:
+            raise ValueError("No JSON found in response")
+
+        recommendations_data = json.loads(json_match.group())
+
+        return [
+            OptimizationRecommendation(
+                ad_id=r['ad_id'],
+                ad_group_id=r['ad_group_id'],
+                action=OptimizationAction(r['action']),
+                reason=r['reason'],
+                new_bid_micros=r.get('new_bid_micros'),
+                budget_multiplier=r.get('budget_multiplier')
+            )
+            for r in recommendations_data
+        ]
+
+    def _execute_optimizations(self, recommendations: List[OptimizationRecommendation]):
+        """Execute the AI recommendations."""
+        for rec in recommendations:
+            try:
+                if rec.action == OptimizationAction.PAUSE:
+                    self.client.update_ad(rec.ad_id, {'is_enabled': False})
+                    print(f"Paused ad {rec.ad_id}: {rec.reason}")
+
+                elif rec.action == OptimizationAction.SCALE:
+                    ad_group = self.client.get_ad_group(rec.ad_group_id)
+                    current_budget = ad_group['budget_total_amount_micros']
+                    multiplier = rec.budget_multiplier or self.config.budget_scale_factor
+                    new_budget = int(current_budget * multiplier)
+                    self.client.update_ad_group(rec.ad_group_id, {
+                        'budget_total_amount_micros': new_budget
+                    })
+                    print(f"Scaled ad group {rec.ad_group_id} budget to ${new_budget / 1_000_000}: {rec.reason}")
+
+                elif rec.action == OptimizationAction.ADJUST_BID:
+                    if rec.new_bid_micros:
+                        self.client.update_ad_group(rec.ad_group_id, {
+                            'bid_amount_micros': rec.new_bid_micros
+                        })
+                        print(f"Adjusted bid for {rec.ad_group_id}: {rec.reason}")
+
+                elif rec.action == OptimizationAction.ROTATE_CREATIVE:
+                    print(f"Creative rotation needed for {rec.ad_id}: {rec.reason}")
+                    self._flag_for_creative_refresh(rec.ad_id)
+
+            except Exception as e:
+                print(f"Failed to execute {rec.action} for {rec.ad_id}: {e}")
+
+    def _flag_for_creative_refresh(self, ad_id: str):
+        """Flag ad for creative refresh."""
+        # Implement: Add to queue, notify team, or auto-generate new creative
+        pass
+
+    def _log_optimization_results(self, recommendations: List[OptimizationRecommendation]):
+        """Log optimization results."""
+        summary = {
+            'timestamp': datetime.now().isoformat(),
+            'total_recommendations': len(recommendations),
+            'actions': {
+                'paused': len([r for r in recommendations if r.action == OptimizationAction.PAUSE]),
+                'scaled': len([r for r in recommendations if r.action == OptimizationAction.SCALE]),
+                'bid_adjusted': len([r for r in recommendations if r.action == OptimizationAction.ADJUST_BID]),
+                'creative_rotation': len([r for r in recommendations if r.action == OptimizationAction.ROTATE_CREATIVE]),
+                'kept': len([r for r in recommendations if r.action == OptimizationAction.KEEP]),
+            }
+        }
+        print(f"Optimization Summary: {json.dumps(summary, indent=2)}")
+
+    def _send_alert(self, subject: str, error: str):
+        """Send alert notification."""
+        # Implement: Send email/Slack notification
+        pass
+
+
+# Entry point for running as background service
+if __name__ == "__main__":
+    import os
+
+    config = OptimizationConfig(
+        account_id=os.environ['REDDIT_ADS_ACCOUNT_ID'],
+        access_token=os.environ['REDDIT_ADS_ACCESS_TOKEN'],
+        refresh_token=os.environ['REDDIT_ADS_REFRESH_TOKEN'],
+        min_ctr=0.005,
+        max_cpa=50.0,
+        min_impressions=1000,
+        budget_scale_factor=1.5,
+        optimization_goal="CONVERSIONS",
+        check_interval_hours=4
+    )
+
+    optimizer = RedditAdsOptimizerService(config)
+    optimizer.start()
+```
+
+### Docker Deployment
+
+```dockerfile
+# Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "services/reddit_ads_optimizer.py"]
+```
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  reddit-ads-optimizer:
+    build: .
+    container_name: reddit-ads-optimizer
+    restart: unless-stopped
+    environment:
+      - REDDIT_ADS_CLIENT_ID=${REDDIT_ADS_CLIENT_ID}
+      - REDDIT_ADS_CLIENT_SECRET=${REDDIT_ADS_CLIENT_SECRET}
+      - REDDIT_ADS_ACCOUNT_ID=${REDDIT_ADS_ACCOUNT_ID}
+      - REDDIT_ADS_ACCESS_TOKEN=${REDDIT_ADS_ACCESS_TOKEN}
+      - REDDIT_ADS_REFRESH_TOKEN=${REDDIT_ADS_REFRESH_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+```
+
+### Optimization Strategies
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  AGENTIC OPTIMIZATION STRATEGIES                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. PERFORMANCE-BASED PAUSING                                   │
+│     ─────────────────────────────────────────────────────────  │
+│     IF impressions > 1000 AND ctr < 0.3% → PAUSE               │
+│     IF impressions > 500 AND conversions = 0 → PAUSE           │
+│     IF cpa > 2x target → PAUSE                                  │
+│                                                                 │
+│  2. WINNER SCALING                                              │
+│     ─────────────────────────────────────────────────────────  │
+│     IF ctr > 1% AND cpa < target AND conversions > 5           │
+│     → SCALE budget by 1.5x                                      │
+│     Cap at 3x original budget to manage risk                    │
+│                                                                 │
+│  3. BID OPTIMIZATION                                            │
+│     ─────────────────────────────────────────────────────────  │
+│     IF position low AND ctr good → INCREASE bid 10-20%         │
+│     IF cpa high but converting → DECREASE bid 10-15%           │
+│                                                                 │
+│  4. CREATIVE FATIGUE DETECTION                                  │
+│     ─────────────────────────────────────────────────────────  │
+│     IF ctr declining 3 consecutive days → ROTATE_CREATIVE      │
+│     IF frequency > 3 → ROTATE_CREATIVE                          │
+│                                                                 │
+│  5. BUDGET REALLOCATION                                         │
+│     ─────────────────────────────────────────────────────────  │
+│     Move budget from paused ads to scaled winners              │
+│     Maintain total daily budget cap                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Advanced: Multi-Agent Optimization
+
+```typescript
+// services/multi-agent-optimizer.ts
+import Anthropic from '@anthropic-ai/sdk';
+
+interface AgentRole {
+  name: string;
+  systemPrompt: string;
+}
+
+const AGENTS: AgentRole[] = [
+  {
+    name: 'Performance Analyst',
+    systemPrompt: `You analyze Reddit Ads performance data. Identify:
+    - Top performers (high CTR, low CPA, good ROAS)
+    - Poor performers (low CTR, high CPA, no conversions)
+    - Trends (improving, declining, stable)
+    Output structured analysis with confidence scores.`
+  },
+  {
+    name: 'Budget Strategist',
+    systemPrompt: `You optimize budget allocation across campaigns.
+    Given performance analysis, recommend:
+    - Budget increases for winners (max 50% increase)
+    - Budget decreases for losers
+    - Reallocation between ad groups
+    Protect total budget while maximizing ROI.`
+  },
+  {
+    name: 'Creative Director',
+    systemPrompt: `You evaluate ad creative performance.
+    Identify ads with:
+    - Creative fatigue (declining engagement)
+    - High potential but poor execution
+    - A/B test winners
+    Recommend creative refreshes and new variations.`
+  },
+  {
+    name: 'Risk Manager',
+    systemPrompt: `You ensure optimization safety.
+    Review recommendations and flag:
+    - Overly aggressive scaling
+    - Insufficient data for decisions
+    - Budget concentration risk
+    - Compliance concerns
+    Approve, modify, or reject recommendations.`
+  }
+];
+
+class MultiAgentOptimizer {
+  private anthropic: Anthropic;
+
+  constructor() {
+    this.anthropic = new Anthropic();
+  }
+
+  async runAgentPipeline(performanceData: any) {
+    let context = { performanceData };
+
+    // Run agents in sequence, each building on previous output
+    for (const agent of AGENTS) {
+      const response = await this.anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system: agent.systemPrompt,
+        messages: [{
+          role: 'user',
+          content: `Previous context:\n${JSON.stringify(context, null, 2)}\n\nProvide your analysis and recommendations.`
+        }]
+      });
+
+      context = {
+        ...context,
+        [agent.name.toLowerCase().replace(' ', '_')]: response.content[0]
+      };
+    }
+
+    return context;
+  }
+}
+```
+
+### Monitoring Dashboard Data
+
+```typescript
+// api/optimization-stats.ts
+interface OptimizationStats {
+  period: string;
+  totalOptimizations: number;
+  actionBreakdown: {
+    paused: number;
+    scaled: number;
+    bidAdjusted: number;
+    creativeRotated: number;
+  };
+  performanceImpact: {
+    ctrChange: number;
+    cpaChange: number;
+    roasChange: number;
+    spendEfficiency: number;
+  };
+  budgetSaved: number;
+  revenueIncreased: number;
+}
+
+async function getOptimizationStats(
+  startDate: Date,
+  endDate: Date
+): Promise<OptimizationStats> {
+  // Query optimization logs and performance data
+  // Calculate before/after metrics
+  // Return aggregated stats
+}
+```
+
+---
+
 ## Resources
 
 - [Reddit Ads API Docs](https://ads-api.reddit.com/docs/)
