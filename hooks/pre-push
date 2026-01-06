@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# Claude Code Review - Pre-Push Hook
+# Runs /code-review on changes before pushing to remote
+# Blocks push if Critical or High severity issues are found
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+echo ""
+echo "🔍 Running Claude Code Review before push..."
+echo ""
+
+# Get the remote and URL being pushed to
+remote="$1"
+url="$2"
+
+# Read stdin to get refs being pushed
+while read local_ref local_sha remote_ref remote_sha; do
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+        # Branch is being deleted, skip
+        continue
+    fi
+
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+        # New branch, compare against default branch
+        base_ref=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+        range="origin/$base_ref...$local_sha"
+    else
+        # Existing branch, compare against remote
+        range="$remote_sha...$local_sha"
+    fi
+
+    # Get changed files
+    changed_files=$(git diff --name-only "$range" 2>/dev/null | grep -E '\.(ts|tsx|js|jsx|py|go|rs|java|rb|php|swift|kt)$' || true)
+
+    if [ -z "$changed_files" ]; then
+        echo -e "${GREEN}✅ No code files to review${NC}"
+        exit 0
+    fi
+
+    file_count=$(echo "$changed_files" | wc -l | tr -d ' ')
+    echo "📁 Reviewing $file_count file(s)..."
+    echo ""
+
+    # Run Claude code review
+    review_output=$(mktemp)
+
+    if ! command -v claude &> /dev/null; then
+        echo -e "${YELLOW}⚠️  Claude CLI not found. Skipping code review.${NC}"
+        echo "   Install: npm install -g @anthropic-ai/claude-code"
+        exit 0
+    fi
+
+    # Run code review with --print flag for non-interactive output
+    if claude --print "/code-review $changed_files" > "$review_output" 2>&1; then
+        # Check for Critical or High severity issues
+        if grep -qE '🔴|Critical|CRITICAL' "$review_output"; then
+            echo -e "${RED}❌ PUSH BLOCKED - Critical issues found${NC}"
+            echo ""
+            cat "$review_output"
+            echo ""
+            echo -e "${RED}Fix critical issues before pushing.${NC}"
+            rm "$review_output"
+            exit 1
+        elif grep -qE '🟠|High|HIGH' "$review_output"; then
+            echo -e "${RED}❌ PUSH BLOCKED - High severity issues found${NC}"
+            echo ""
+            cat "$review_output"
+            echo ""
+            echo -e "${RED}Fix high severity issues before pushing.${NC}"
+            rm "$review_output"
+            exit 1
+        else
+            echo -e "${GREEN}✅ Code review passed${NC}"
+            # Show summary if there are medium/low issues
+            if grep -qE '🟡|🟢|Medium|Low' "$review_output"; then
+                echo ""
+                echo -e "${YELLOW}ℹ️  Advisory issues (non-blocking):${NC}"
+                grep -E '🟡|🟢|Medium|Low' "$review_output" | head -5
+            fi
+        fi
+    else
+        echo -e "${YELLOW}⚠️  Code review failed to run. Allowing push.${NC}"
+        echo "   Check Claude CLI configuration."
+    fi
+
+    rm -f "$review_output"
+done
+
+echo ""
+exit 0

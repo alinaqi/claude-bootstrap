@@ -165,25 +165,30 @@ docker-compose up -d reddit-ads-optimizer
 
 ## Code Reviews (Mandatory Guardrail)
 
-**Every commit and deployment requires code review. No exceptions.**
+**Every push requires code review. No exceptions.**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  WORKFLOW: Code → Test → Review → Fix → Commit             │
+│  WORKFLOW: Code → Test → Commit → Push → Review blocks     │
 ├─────────────────────────────────────────────────────────────┤
-│  Run: /code-review                                          │
-│  Plugin: code-review@claude-plugins-official                │
+│  Run manually: /code-review                                 │
+│  Enforced: Pre-push hook blocks on Critical/High            │
 └─────────────────────────────────────────────────────────────┘
+```
+
+**Enable pre-push hook in any project:**
+```bash
+~/.claude/install-hooks.sh
 ```
 
 **Severity levels:**
 
-| Level | Action | Can Commit? |
-|-------|--------|-------------|
-| 🔴 Critical | Must fix now | ❌ NO |
-| 🟠 High | Must fix now | ❌ NO |
-| 🟡 Medium | Fix soon | ✅ YES |
-| 🟢 Low | Nice to have | ✅ YES |
+| Level | Action | Can Push? |
+|-------|--------|-----------|
+| 🔴 Critical | Must fix now | ❌ BLOCKED |
+| 🟠 High | Must fix now | ❌ BLOCKED |
+| 🟡 Medium | Fix soon | ✅ Advisory |
+| 🟢 Low | Nice to have | ✅ Advisory |
 
 **What it catches:**
 - Security vulnerabilities (SQL injection, XSS, secrets)
@@ -191,7 +196,7 @@ docker-compose up -d reddit-ads-optimizer
 - Architecture problems (coupling, SOLID violations)
 - Code quality (complexity, duplication, missing types)
 
-**Integration:** Pre-commit hooks, GitHub Actions, and CI/CD pipelines automatically run code review.
+**Integration:** Pre-push hooks, GitHub Actions, and CI/CD pipelines automatically run code review.
 
 ## What Gets Created
 
