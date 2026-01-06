@@ -242,6 +242,47 @@ Start session → Pull → Check state.md → Claim todo → Work → Update sta
 /check-contributors --team   # Convert to team project
 ```
 
+## Code Deduplication (Prevent Semantic Bloat)
+
+**AI doesn't copy/paste - it reimplements. The problem is duplicate PURPOSE, not duplicate code.**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  CHECK BEFORE YOU WRITE                                     │
+├─────────────────────────────────────────────────────────────┤
+│  Before creating ANY new function:                          │
+│  1. Check CODE_INDEX.md for existing capabilities           │
+│  2. Search codebase for similar functionality               │
+│  3. Extend existing if possible                             │
+│  4. Only create new if nothing suitable exists              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Semantic capability index** (organized by what things DO):
+
+```markdown
+## Validation
+| Function | Location | Does What |
+|----------|----------|-----------|
+| `isEmail()` | utils/validate.ts | Validates email format |
+| `isPhone()` | utils/validate.ts | Validates phone number |
+
+## Date/Time
+| Function | Location | Does What |
+|----------|----------|-----------|
+| `formatRelative()` | utils/dates.ts | "2 days ago" format |
+```
+
+Before writing `validateEmail()`, Claude searches → finds `isEmail()` exists → uses it.
+
+**Commands:**
+```bash
+/update-code-index      # Regenerate index from codebase
+/audit-duplicates       # Find semantic duplicates to merge
+```
+
+**For large codebases (100+ files):** Optional vector DB integration (ChromaDB/LanceDB) for semantic search.
+
 ## What Gets Created
 
 ```
@@ -342,7 +383,7 @@ Define before you build:
 2. **Atomic todos** with validation criteria and test cases
 3. **Move, don't delete** - Completed todos go to `completed.md` for reference
 
-## Skills Included (40 Skills)
+## Skills Included (41 Skills)
 
 ### Core Skills
 | Skill | Purpose |
@@ -351,6 +392,7 @@ Define before you build:
 | `iterative-development.md` | Ralph Wiggum loops - self-referential TDD iteration until tests pass |
 | `code-review.md` | Mandatory code reviews via `/code-review` before every commit and deploy |
 | `commit-hygiene.md` | Atomic commits, PR size limits, commit thresholds, stacked PRs |
+| `code-deduplication.md` | Prevent semantic duplication with capability index, check-before-write |
 | `team-coordination.md` | Multi-person projects - shared state, todo claiming, handoffs, conflict prevention |
 | `security.md` | OWASP patterns, secrets management, security testing |
 | `credentials.md` | Centralized API key management from Access.txt |
