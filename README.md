@@ -101,10 +101,20 @@ No need to manually invoke `/ralph-loop`. Just describe what you want:
 ### Setup Ralph Wiggum Plugin
 
 ```bash
-# Clone Claude Code repo and copy plugin
-git clone https://github.com/anthropics/claude-code.git /tmp/claude-code
-cp -r /tmp/claude-code/plugins/ralph-wiggum ~/.claude/plugins/
+# Install from official marketplace (in Claude Code)
+/plugin install ralph-loop@claude-plugins-official
 ```
+
+**Troubleshooting: "Source path does not exist: .../ralph-wiggum"**
+
+The plugin was renamed from `ralph-wiggum` to `ralph-loop` in the marketplace. If you see this error, the cache references the old name but the plugin folder uses the new name. Fix with a symlink:
+
+```bash
+ln -s ~/.claude/plugins/marketplaces/claude-plugins-official/plugins/ralph-loop \
+      ~/.claude/plugins/marketplaces/claude-plugins-official/plugins/ralph-wiggum
+```
+
+Then retry `/plugin install ralph-loop@claude-plugins-official`.
 
 ## Commit Hygiene (Automatic PR Size Management)
 
