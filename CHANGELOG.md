@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - **Android Java skill** - MVVM architecture, ViewBinding, Espresso testing, GitHub Actions CI (contributed by @tyr4n7)
+- **Android Kotlin skill** - Coroutines, Jetpack Compose, Hilt DI, MockK/Turbine testing (contributed by @tyr4n7)
 
 ---
 
