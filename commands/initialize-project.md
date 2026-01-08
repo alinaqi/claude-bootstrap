@@ -6,6 +6,30 @@ Full project setup with Claude coding guardrails. Works for both new and existin
 
 ---
 
+## Phase 0: Validate Bootstrap Installation
+
+**FIRST**, verify claude-bootstrap is properly installed:
+
+```bash
+# Run quick validation
+~/.claude-bootstrap/tests/validate-structure.sh --quick
+```
+
+This checks:
+- Skills are installed with correct structure (folder/SKILL.md)
+- Commands are installed (~/.claude/commands/)
+- Hooks are installed (~/.claude/hooks/)
+
+**If validation fails:**
+- Show the error to user
+- Suggest running: `cd ~/.claude-bootstrap && git pull && ./install.sh`
+- Offer to continue anyway or abort
+
+**If validation passes:**
+- Continue to Phase 1
+
+---
+
 ## Phase 1: Detect Project State
 
 First, check what already exists:
@@ -144,24 +168,34 @@ mkdir -p scripts
 
 ### Step 2: Update skill files from ~/.claude/skills/
 
+**Skills use folder structure:** Each skill is a folder containing `SKILL.md`.
+
+```bash
+# Copy skill folders (not flat .md files)
+cp -r ~/.claude/skills/base/ .claude/skills/
+cp -r ~/.claude/skills/security/ .claude/skills/
+cp -r ~/.claude/skills/project-tooling/ .claude/skills/
+cp -r ~/.claude/skills/session-management/ .claude/skills/
+```
+
 **Always copy (overwrite with latest):**
-- `base.md` → `.claude/skills/base.md`
-- `security.md` → `.claude/skills/security.md`
-- `project-tooling.md` → `.claude/skills/project-tooling.md`
-- `session-management.md` → `.claude/skills/session-management.md`
+- `base/` → `.claude/skills/base/`
+- `security/` → `.claude/skills/security/`
+- `project-tooling/` → `.claude/skills/project-tooling/`
+- `session-management/` → `.claude/skills/session-management/`
 
 **Based on language:**
-- Python → copy `python.md`
-- TypeScript/JavaScript → copy `typescript.md`
+- Python → copy `python/`
+- TypeScript/JavaScript → copy `typescript/`
 
 **Based on project type:**
-- React Native → copy `typescript.md` AND `react-native.md`
-- React Web → copy `typescript.md` AND `react-web.md`
-- Node Backend → copy `typescript.md` AND `nodejs-backend.md`
-- Full Stack (Node + React) → copy `typescript.md`, `nodejs-backend.md`, AND `react-web.md`
+- React Native → copy `typescript/` AND `react-native/`
+- React Web → copy `typescript/` AND `react-web/`
+- Node Backend → copy `typescript/` AND `nodejs-backend/`
+- Full Stack (Node + React) → copy `typescript/`, `nodejs-backend/`, AND `react-web/`
 
 **If AI-first:**
-- Copy `llm-patterns.md`
+- Copy `llm-patterns/`
 
 **Note:** Skills are always overwritten with the latest version from ~/.claude/skills/. This ensures updates propagate when user updates their global skills.
 
@@ -330,13 +364,13 @@ chmod +x scripts/security-check.sh
 
 ## Skills
 Read and follow these skills before writing any code:
-- .claude/skills/base.md
-- .claude/skills/security.md
-- .claude/skills/project-tooling.md
-- .claude/skills/session-management.md
-- .claude/skills/[language].md
-- .claude/skills/[framework].md (if applicable)
-- .claude/skills/llm-patterns.md (if AI-first)
+- .claude/skills/base/SKILL.md
+- .claude/skills/security/SKILL.md
+- .claude/skills/project-tooling/SKILL.md
+- .claude/skills/session-management/SKILL.md
+- .claude/skills/[language]/SKILL.md
+- .claude/skills/[framework]/SKILL.md (if applicable)
+- .claude/skills/llm-patterns/SKILL.md (if AI-first)
 
 ## Project Overview
 [Description from question 1]
@@ -805,11 +839,14 @@ To update skills for all future projects:
 
 ```bash
 # Pull latest skills
-cd ~/.claude-skills
+cd ~/.claude-bootstrap
 git pull
 
 # Reinstall
 ./install.sh
+
+# Validate installation
+./tests/validate-structure.sh
 ```
 
 Then in any existing project:
@@ -818,3 +855,20 @@ Then in any existing project:
 ```
 
 Skills will be updated while preserving project-specific configuration.
+
+## Troubleshooting
+
+If `/initialize-project` shows validation errors:
+
+```bash
+# Full validation to see all issues
+~/.claude-bootstrap/tests/validate-structure.sh --full
+
+# Quick validation (what initialize-project runs)
+~/.claude-bootstrap/tests/validate-structure.sh --quick
+```
+
+Common issues:
+- **Flat .md files**: Skills should be folders with SKILL.md, not flat files
+- **Missing commands**: Reinstall with `./install.sh`
+- **Missing hooks**: Reinstall with `./install.sh`
