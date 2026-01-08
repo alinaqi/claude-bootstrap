@@ -699,6 +699,12 @@ Key principles:
 - Maintain idempotency
 - Test locally before submitting
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
+
+**Latest: v2.0.0** - Skills now use folder/SKILL.md structure (breaking change)
+
 ## License
 
 MIT - See [LICENSE](LICENSE)
