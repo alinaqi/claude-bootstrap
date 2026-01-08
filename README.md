@@ -393,7 +393,7 @@ Define before you build:
 2. **Atomic todos** with validation criteria and test cases
 3. **Move, don't delete** - Completed todos go to `completed.md` for reference
 
-## Skills Included (42 Skills)
+## Skills Included (44 Skills)
 
 ### Core Skills
 | Skill | Purpose |
@@ -418,6 +418,8 @@ Define before you build:
 | `react-web.md` | React + hooks + React Query + Zustand |
 | `react-native.md` | Mobile patterns, platform-specific code |
 | `android-java.md` | Android Java with MVVM, ViewBinding, Espresso testing |
+| `android-kotlin.md` | Android Kotlin with Coroutines, Jetpack Compose, Hilt, MockK/Turbine |
+| `flutter.md` | Flutter with Riverpod, Freezed, go_router, mocktail testing |
 
 ### UI Skills
 | Skill | Purpose |
@@ -667,8 +669,9 @@ Yes. Skills are markdown files in `.claude/skills/`. Edit or add your own.
 
 | Category | Supported |
 |----------|-----------|
-| Languages | TypeScript, Python |
-| Frontend | React, Next.js, React Native, PWA |
+| Languages | TypeScript, Python, Kotlin, Dart, Java |
+| Frontend | React, Next.js, React Native, Flutter, PWA |
+| Mobile | React Native, Flutter, Android (Java/Kotlin) |
 | Backend | Node.js, Express, FastAPI |
 | Database | Supabase, PostgreSQL, Drizzle, Prisma |
 | Web Tech | PWA (Service Workers, Workbox, Offline-First) |
