@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.3.0] - 2026-01-17
+
+### Added
+
+#### Google Gemini Code Review
+- **Gemini Review skill** - Google Gemini CLI for code review with Gemini 2.5 Pro
+  - 1M token context window - analyze entire repositories at once
+  - Free tier: 1,000 requests/day with Google account
+  - Code Review Extension: `/code-review` command in Gemini CLI
+  - Headless mode for CI/CD: `gemini -p "prompt"`
+  - Benchmarks: 63.8% SWE-Bench, 56.3% Qodo PR, 70.4% LiveCodeBench
+
+- **Multi-engine code review** - `/code-review` now supports up to 3 engines
+  - Claude (built-in) - quick, context-aware reviews
+  - OpenAI Codex - 88% security issue detection
+  - Google Gemini - 1M token context for large codebases
+  - Dual engine mode - run any two engines, compare findings
+  - Triple engine mode - maximum coverage for critical/security code
+
+- **GitHub Actions workflows** for all configurations
+  - Gemini-only workflow
+  - Triple engine (Claude + Codex + Gemini) workflow
+  - Updated dual engine workflow
+
+### Changed
+- Total skills increased from 51 to **52 skills**
+- Updated `/code-review` to support engine selection: `--engine claude,codex,gemini`
+- Added `--gemini` and `--all` shortcuts for common configurations
+
+---
+
 ## [2.2.0] - 2026-01-17
 
 ### Added

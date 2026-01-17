@@ -400,8 +400,9 @@ Define before you build:
 |-------|---------|
 | `base.md` | Universal patterns, constraints, TDD workflow, atomic todos |
 | `iterative-development.md` | Ralph Wiggum loops - self-referential TDD iteration until tests pass |
-| `code-review.md` | Mandatory code reviews via `/code-review` - choose Claude, Codex, or both |
+| `code-review.md` | Mandatory code reviews via `/code-review` - choose Claude, Codex, Gemini, or multi-engine |
 | `codex-review.md` | OpenAI Codex CLI code review with GPT-5.2-Codex, CI/CD integration |
+| `gemini-review.md` | Google Gemini CLI code review with Gemini 2.5 Pro, 1M token context |
 | `commit-hygiene.md` | Atomic commits, PR size limits, commit thresholds, stacked PRs |
 | `code-deduplication.md` | Prevent semantic duplication with capability index, check-before-write |
 | `team-coordination.md` | Multi-person projects - shared state, todo claiming, handoffs, conflict prevention |
@@ -736,7 +737,7 @@ Key principles:
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
 
-**Latest: v2.2.0** - 51 skills with existing repo analysis, guardrails setup, and `/analyze-repo` command
+**Latest: v2.3.0** - 52 skills with Gemini code review engine, triple-engine reviews, and 1M token context support
 
 ## License
 

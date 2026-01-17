@@ -5,9 +5,9 @@ description: Mandatory code reviews via /code-review before commits and deploys
 
 # Code Review Skill
 
-*Load with: base.md + [codex-review.md for OpenAI Codex option]*
+*Load with: base.md + [codex-review.md for OpenAI Codex] + [gemini-review.md for Google Gemini]*
 
-**Purpose:** Enforce automated code reviews as a mandatory guardrail before every commit and deployment. Choose between Claude, OpenAI Codex, or both for comprehensive analysis.
+**Purpose:** Enforce automated code reviews as a mandatory guardrail before every commit and deployment. Choose between Claude, OpenAI Codex, Google Gemini, or multiple engines for comprehensive analysis.
 
 ---
 
@@ -27,28 +27,36 @@ When running `/code-review`, users can choose their preferred review engine:
 │    GPT-5.2-Codex specialized for code review, 88% detection     │
 │    Requires: npm install -g @openai/codex                       │
 │                                                                 │
-│  ○ Both (recommended for critical PRs)                          │
-│    Run both engines, compare findings, catch more issues        │
+│  ○ Google Gemini CLI                                            │
+│    Gemini 2.5 Pro with 1M token context, free tier available    │
+│    Requires: npm install -g @google/gemini-cli                  │
+│                                                                 │
+│  ○ Dual Engine (any two)                                        │
+│    Run two engines, compare findings, catch more issues         │
+│                                                                 │
+│  ○ All Three (maximum coverage)                                 │
+│    Run Claude + Codex + Gemini for critical/security code       │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Engine Comparison
 
-| Aspect | Claude | Codex | Both |
-|--------|--------|-------|------|
-| **Setup** | None | Install CLI + auth | Both setups |
-| **Speed** | Fast | Fast | 2x time |
-| **Context** | Full conversation | Fresh per review | N/A |
-| **Specialization** | General purpose | Code review trained | Combined |
-| **Best for** | Quick reviews | Critical PRs, CI/CD | High-stakes code |
+| Aspect | Claude | Codex | Gemini | Multi-Engine |
+|--------|--------|-------|--------|--------------|
+| **Setup** | None | npm + OpenAI API | npm + Google Account | All setups |
+| **Speed** | Fast | Fast | Fast | 2-3x time |
+| **Context** | Conversation | Fresh per review | 1M tokens | N/A |
+| **Detection** | Good | 88% (best) | 63.8% SWE-Bench | Combined |
+| **Free Tier** | N/A | Limited | 1,000/day | Varies |
+| **Best for** | Quick reviews | High accuracy | Large codebases | Critical code |
 
 ### Set Default Engine
 
 ```toml
 # ~/.claude/settings.toml or project CLAUDE.md
 [code-review]
-default_engine = "claude"  # Options: claude, codex, both
+default_engine = "claude"  # Options: claude, codex, gemini, dual, all
 ```
 
 ### Usage Examples
@@ -60,23 +68,34 @@ default_engine = "claude"  # Options: claude, codex, both
 # Explicitly choose engine
 /code-review --engine claude
 /code-review --engine codex
-/code-review --engine both
+/code-review --engine gemini
+
+# Dual engine (pick any two)
+/code-review --engine claude,codex
+/code-review --engine claude,gemini
+/code-review --engine codex,gemini
+
+# All three engines
+/code-review --engine all
 
 # Quick shortcuts
 /code-review              # Uses default
 /code-review --codex      # Use Codex
-/code-review --both       # Use both engines
+/code-review --gemini     # Use Gemini
+/code-review --all        # All three engines
 ```
 
 ---
 
-## Dual Engine Output (Both Mode)
+## Multi-Engine Output
 
-When using both engines, findings are compared and deduplicated:
+When using multiple engines, findings are compared and deduplicated:
+
+### Dual Engine Example
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  CODE REVIEW RESULTS - DUAL ENGINE                              │
+│  CODE REVIEW RESULTS - DUAL ENGINE (Claude + Codex)             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ✅ AGREED (Found by both):                                     │
@@ -98,6 +117,48 @@ When using both engines, findings are compared and deduplicated:
 │  Status: ❌ BLOCKED - Fix critical/high issues                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+### Triple Engine Example (All Three)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CODE REVIEW RESULTS - TRIPLE ENGINE                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ✅ UNANIMOUS (All 3 found):                                    │
+│  🔴 SQL injection in auth.ts:45                                 │
+│                                                                 │
+│  ✅ MAJORITY (2 of 3 found):                                    │
+│  🟠 Memory leak - unclosed stream in upload.ts:34 (Codex+Gemini)│
+│  🟡 Missing error handling in api.ts:112 (Claude+Codex)         │
+│                                                                 │
+│  🔷 CLAUDE ONLY:                                                │
+│  🟠 Potential race condition in worker.ts:89                    │
+│                                                                 │
+│  🔶 CODEX ONLY:                                                 │
+│  🟡 N+1 query pattern in orders.ts:156                          │
+│                                                                 │
+│  🟢 GEMINI ONLY:                                                │
+│  🟡 Consider using batch API for better performance             │
+│  🟢 Type could be more specific in types.ts:23                  │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  SUMMARY                                                        │
+│  Unanimous: 1 | Majority: 2 | Single: 5                         │
+│  Critical: 1 | High: 2 | Medium: 3 | Low: 2                     │
+│  Status: ❌ BLOCKED - Fix critical/high issues                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### When to Use Each Mode
+
+| Mode | Use When |
+|------|----------|
+| **Single (Claude)** | Quick in-flow reviews, exploration |
+| **Single (Codex)** | CI/CD automation, high accuracy needed |
+| **Single (Gemini)** | Large codebases (100+ files), free tier |
+| **Dual** | Important PRs, pre-merge reviews |
+| **Triple (All)** | Security-critical code, payment systems, auth |
 
 ---
 
@@ -275,6 +336,52 @@ See `codex-review.md` skill for full Codex documentation.
 
 ---
 
+## Gemini CLI Setup (For Gemini/Multi-Engine Modes)
+
+If you want to use Gemini or multi-engine modes, install the Gemini CLI:
+
+```bash
+# Prerequisites: Node.js 20+
+node --version  # Must be 20+
+
+# Install Gemini CLI
+npm install -g @google/gemini-cli
+
+# Or via Homebrew (macOS)
+brew install gemini-cli
+
+# Install Code Review extension
+gemini extensions install https://github.com/gemini-cli-extensions/code-review
+```
+
+### Authenticate
+
+```bash
+# Option 1: Google Account (recommended, 1000 req/day free)
+gemini  # Follow browser login prompts
+
+# Option 2: API key (100 req/day free)
+export GEMINI_API_KEY="your-key-from-aistudio.google.com"
+```
+
+### Verify Installation
+
+```bash
+# Check Gemini is installed
+gemini --version
+
+# List extensions
+gemini extensions list
+
+# Test review
+gemini
+> /code-review
+```
+
+See `gemini-review.md` skill for full Gemini documentation.
+
+---
+
 ## CI/CD Integration
 
 ### GitHub Actions - Claude Only
@@ -436,6 +543,194 @@ jobs:
               issue_number: context.issue.number,
               body: review
             });
+```
+
+### GitHub Actions - Gemini Only
+
+```yaml
+# .github/workflows/gemini-review.yml
+name: Gemini Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Gemini CLI
+        run: npm install -g @google/gemini-cli
+
+      - name: Run Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # Get diff
+          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
+
+          # Run Gemini review
+          gemini -p "Review this pull request diff for bugs, security issues, and code quality problems. Be specific about file names and line numbers.
+
+          $(cat diff.txt)" > review.md
+
+      - name: Post Review Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('review.md', 'utf8');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🤖 Gemini Code Review\n\n${review}`
+            });
+
+      - name: Check for Critical Issues
+        run: |
+          if grep -qi "critical\|security vulnerability\|injection" review.md; then
+            echo "❌ Critical issues found"
+            exit 1
+          fi
+```
+
+### GitHub Actions - All Three Engines
+
+```yaml
+# .github/workflows/triple-review.yml
+name: Triple Engine Code Review
+
+on:
+  pull_request:
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          npx @anthropic-ai/claude-code --print "/code-review" > claude-review.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claude-review
+          path: claude-review.md
+
+  codex-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Codex
+        run: npm install -g @openai/codex
+
+      - name: Codex Review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          codex exec --full-auto --sandbox read-only \
+            --output-last-message codex-review.md \
+            "Review this code for bugs, security issues, and quality problems"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-review
+          path: codex-review.md
+
+  gemini-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Gemini CLI
+        run: npm install -g @google/gemini-cli
+
+      - name: Gemini Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
+          gemini -p "Review this code diff for bugs, security, and quality issues:
+          $(cat diff.txt)" > gemini-review.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gemini-review
+          path: gemini-review.md
+
+  combine-reviews:
+    needs: [claude-review, codex-review, gemini-review]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Combine Reviews
+        run: |
+          echo "## 🔍 Triple Engine Code Review Results" > combined-review.md
+          echo "" >> combined-review.md
+          echo "### 🟣 Claude Findings" >> combined-review.md
+          cat claude-review/claude-review.md >> combined-review.md
+          echo "" >> combined-review.md
+          echo "---" >> combined-review.md
+          echo "### 🟢 Codex Findings" >> combined-review.md
+          cat codex-review/codex-review.md >> combined-review.md
+          echo "" >> combined-review.md
+          echo "---" >> combined-review.md
+          echo "### 🔵 Gemini Findings" >> combined-review.md
+          cat gemini-review/gemini-review.md >> combined-review.md
+
+      - name: Post Combined Review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('combined-review.md', 'utf8');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: review
+            });
+
+      - name: Check Critical Issues
+        run: |
+          # Fail if any engine found critical issues
+          if grep -qi "critical\|🔴" combined-review.md; then
+            echo "❌ Critical issues found by at least one engine"
+            exit 1
+          fi
 ```
 
 ---
