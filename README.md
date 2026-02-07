@@ -1,8 +1,10 @@
 # Claude Bootstrap
 
-> An opinionated project initialization system for Claude Code. **TDD-first, iterative loops, security-first, AI-native.**
+> An opinionated project initialization system for Claude Code. **Agent teams by default, strict TDD pipeline, multi-engine code review, security-first.**
 
 **The bottleneck has moved from code generation to code comprehension.** AI can generate infinite code, but humans still need to review, understand, and maintain it. Claude Bootstrap provides guardrails that keep AI-generated code simple, secure, and verifiable.
+
+**New in v2.5.0:** Every project now runs as a coordinated team of AI agents. A Team Lead orchestrates, a Quality Agent enforces TDD, a Security Agent scans for vulnerabilities, a Code Review Agent runs multi-engine reviews, a Merger Agent creates PRs, and dedicated Feature Agents implement each feature in parallel - all following an immutable pipeline: **Spec > Tests > Fail > Implement > Pass > Review > Security > PR.**
 
 ## Core Philosophy
 
@@ -36,6 +38,13 @@
 │  Every commit requires /code-review before push.               │
 │  🔴 Critical + 🟠 High = blocked │ 🟡 Medium + 🟢 Low = can ship │
 │  AI catches what humans miss. Humans catch what AI misses.     │
+├────────────────────────────────────────────────────────────────┤
+│  AGENT TEAMS BY DEFAULT                                        │
+│  ─────────────────────────────────────────────────────────────│
+│  Every project runs as a coordinated team of AI agents.        │
+│  Team Lead + Quality + Security + Review + Merger + Features   │
+│  Strict pipeline: Spec > Test > Fail > Build > Pass > PR       │
+│  Task dependencies make it impossible to skip steps.           │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,7 +75,9 @@ Claude will:
 2. **Ask questions** - Language, framework, AI-first?, database
 3. **Set up repository** - Create or connect GitHub repo
 4. **Create structure** - Skills, security, CI/CD, specs, todos
-5. **Prompt for specs** - Transition to defining first feature
+5. **Ask for features** - List your key features
+6. **Spawn agent team** - Deploy Team Lead + Quality + Security + Review + Merger + Feature agents
+7. **Work begins** - Each feature runs the strict TDD pipeline in parallel
 
 ## Automatic Iterative Loops (Ralph Wiggum)
 
@@ -186,9 +197,45 @@ Then retry `/plugin install ralph-loop@claude-plugins-official`.
 
 **Task dependencies make it structurally impossible to skip steps.** A feature agent cannot implement until the quality agent verifies tests fail. The merger cannot create a PR until security scan passes.
 
+**10-task dependency chain per feature:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Feature: "auth"                                             │
+│                                                              │
+│  auth-spec ──> auth-spec-review ──> auth-tests               │
+│  (Feature)     (Quality)            (Feature)                │
+│                                         │                    │
+│  auth-fail-verify ──> auth-implement ──> auth-pass-verify    │
+│  (Quality)            (Feature)          (Quality)           │
+│                                              │               │
+│  auth-validate ──> auth-code-review ──> auth-security        │
+│  (Feature)         (Review Agent)       (Security)           │
+│                                              │               │
+│  auth-branch-pr                                              │
+│  (Merger)                                                    │
+│                                                              │
+│  Each arrow = addBlockedBy dependency                        │
+│  Cannot start until predecessor completes                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Cross-agent verification (trust but verify):**
+- Quality Agent independently runs tests (doesn't trust feature agent's report)
+- Security Agent independently scans (doesn't trust review agent)
+- Merger Agent verifies all predecessors before branching
+- Every PR includes full pipeline results: test output, coverage, review, security
+
+**Multiple features run in parallel.** If your project has auth, dashboard, and payments - that's 3 feature agents working simultaneously, with shared Quality/Review/Security/Merger agents processing tasks as they unblock.
+
 ```bash
-# Spawn team manually on existing project
+# Auto-spawned by /initialize-project
+# Or spawn manually on existing project:
 /spawn-team
+```
+
+**Environment required:**
+```bash
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 ```
 
 ## Agentic Ad Optimization (Reddit Ads)
