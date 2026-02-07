@@ -1026,26 +1026,134 @@ Created:
 
 ---
 
-## Phase 6: Next Steps
+## Phase 6: Agent Team Setup (Default Workflow)
 
-**For new projects**, prompt to start specs:
-> **Project initialized! Ready to start building.**
->
-> Would you like to start defining your first feature? I'll help you:
-> 1. Create a feature spec in `_project_specs/features/`
-> 2. Break it down into atomic todos with validation and test cases
-> 3. Add them to `_project_specs/todos/active.md`
->
-> What's the first feature you want to build?
+Every project uses Claude Agent Teams by default. This phase sets up the team infrastructure and spawns agents to implement features in parallel.
 
-**For existing projects**, offer options:
-> **Project updated with latest skills!**
+### Step 1: Set Environment Variable
+
+Ensure the agent teams experimental flag is set:
+
+```bash
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+Also add to the project's `.env.example` if not present:
+```
+# Agent Teams (required for claude-bootstrap team workflow)
+CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+### Step 2: Copy Agent Definitions
+
+Copy agent definitions from the agent-teams skill to the project:
+
+```bash
+mkdir -p .claude/agents
+cp ~/.claude/skills/agent-teams/agents/*.md .claude/agents/
+```
+
+This creates:
+```
+.claude/agents/
+  team-lead.md      # Orchestration only, delegate mode
+  quality.md        # TDD verification (RED/GREEN phases)
+  security.md       # OWASP scanning, secrets detection
+  code-review.md    # Multi-engine code review
+  merger.md         # Branch creation, PR management
+  feature.md        # Feature implementation template
+```
+
+### Step 3: Add Agent Teams to CLAUDE.md
+
+Add the agent-teams skill to the Skills section in CLAUDE.md:
+```
+- .claude/skills/agent-teams/SKILL.md
+```
+
+Add a new section to CLAUDE.md:
+```markdown
+## Agent Teams (Default Workflow)
+
+This project uses Claude Code Agent Teams as the default development workflow.
+Every feature is implemented by a dedicated agent following a strict TDD pipeline.
+
+### Strict Pipeline (per feature)
+Spec > Spec Review > Tests > RED Verify > Implement > GREEN Verify > Validate > Code Review > Security Scan > Branch + PR
+
+### Team Roster
+- **Team Lead**: Orchestrates, breaks work into features, assigns tasks (NEVER writes code)
+- **Quality Agent**: Verifies TDD discipline - RED/GREEN phases, coverage >= 80%
+- **Security Agent**: OWASP scanning, secrets detection, dependency audit
+- **Code Review Agent**: Multi-engine code reviews (Claude/Codex/Gemini)
+- **Merger Agent**: Creates feature branches and PRs via gh CLI
+- **Feature Agents**: One per feature, follows strict TDD pipeline
+
+### Commands
+- `/spawn-team` - Spawn the agent team (auto-run after init, or run manually)
+
+### Required Environment
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+### Step 4: Prompt for Features
+
+**For new projects:**
+> **Project initialized! Ready to deploy the agent team.**
 >
-> What would you like to do?
-> 1. Review changes to skills (see what's new)
-> 2. Add a new feature spec
-> 3. Continue working on existing todos
-> 4. Something else
+> The agent team implements features in parallel using a strict TDD pipeline:
+> ```
+> Spec > Tests > Verify Fail > Implement > Verify Pass > Review > Security > PR
+> ```
+>
+> What are the key features of this project? List them and I'll create a spec
+> skeleton for each, then spawn the team to implement them in parallel.
+>
+> Example: "user authentication, dashboard, payment processing"
+
+For each feature the user lists:
+1. Create `_project_specs/features/{feature-name}.md` with skeleton spec
+2. Include: description (from user input), empty acceptance criteria, empty test cases table
+
+**For existing projects:**
+> **Project updated with latest skills and agent team support!**
+>
+> I've added agent team infrastructure. Your options:
+> 1. Define features and spawn the team now
+> 2. Continue working on existing todos (solo mode)
+> 3. Review what's new in skills
+
+### Step 5: Spawn Team
+
+After the user provides features (or if feature specs already exist), automatically run the `/spawn-team` workflow:
+
+1. Create the team (TeamCreate)
+2. Spawn 5 default agents (team-lead, quality-agent, security-agent, review-agent, merger-agent)
+3. Spawn 1 feature agent per feature
+4. Team lead creates 10-task dependency chains per feature
+5. Work begins automatically
+
+### Step 6: Show Team Status
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  AGENT TEAM DEPLOYED                                             │
+│  ──────────────────────────────────────────────────────────────  │
+│                                                                  │
+│  Team: {project-name}                                            │
+│  Features: {N}                                                   │
+│  Total tasks: {N * 10}                                           │
+│  Agents: {5 + N}                                                 │
+│                                                                  │
+│  PIPELINE (per feature)                                          │
+│  Spec > Review > Tests > RED > Implement > GREEN >               │
+│  Validate > Code Review > Security > Branch+PR                   │
+│                                                                  │
+│  Use Shift+Up/Down to select and message agents.                 │
+│  Use Ctrl+T to toggle the shared task list.                      │
+│  The team runs autonomously until all PRs are created.           │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 

@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.0] - 2026-02-07
+
+### Added
+
+#### Agent Teams (Default Workflow)
+- **Agent Teams skill** - Coordinated team of AI agents as the default development workflow
+  - Strict TDD pipeline: Specs > Tests > Fail > Implement > Test > Review > Security > Branch > PR
+  - Task dependency chains enforce pipeline ordering (no step can be skipped)
+  - Multiple features run in parallel with shared verification agents
+  - Quality gates at every stage with cross-agent verification
+
+- **Default agent roster** (5 permanent agents):
+  - **Team Lead** - Orchestration only (delegate mode), task breakdown, feature agent spawning
+  - **Quality Agent** - TDD verification (RED/GREEN phases), spec review, coverage >= 80%
+  - **Security Agent** - OWASP scanning, secrets detection, dependency audit
+  - **Code Review Agent** - Multi-engine code review (Claude/Codex/Gemini)
+  - **Merger Agent** - Feature branches, PR creation via `gh` CLI
+
+- **Feature agents** - One per feature, each follows the strict pipeline end-to-end
+  - Writes spec, tests, implementation, validation
+  - Hands off to Quality, Review, Security, Merger at each gate
+
+- **Agent definition files** in `skills/agent-teams/agents/`:
+  - `team-lead.md`, `quality.md`, `security.md`, `code-review.md`, `merger.md`, `feature.md`
+  - Copied to `.claude/agents/` during project initialization
+
+- **`/spawn-team` command** - Spawn the agent team on any project
+  - Checks prerequisites (env var, agent definitions, feature specs)
+  - Spawns all agents and creates task dependency chains
+  - Shows team status summary
+
+- **10-task dependency chain per feature**:
+  1. Spec → 2. Spec Review → 3. Tests → 4. RED Verify → 5. Implement →
+  6. GREEN Verify → 7. Validate → 8. Code Review → 9. Security Scan → 10. Branch+PR
+
+### Changed
+- Total skills increased from 53 to **54 skills**
+- `/initialize-project` Phase 6 now sets up agent team by default (replaces manual next steps)
+- CLAUDE.md template includes agent teams section
+- `team-coordination.md` superseded by `agent-teams.md` for automated coordination
+
+---
+
 ## [2.4.0] - 2026-01-20
 
 ### Added

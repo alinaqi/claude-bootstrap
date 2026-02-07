@@ -145,6 +145,52 @@ Then retry `/plugin install ralph-loop@claude-plugins-official`.
 
 **Atomic commit principle:** If you need "and" to describe your commit, split it.
 
+## Agent Teams (Default Workflow)
+
+**Every project runs as a coordinated team of AI agents.** Features are implemented in parallel by dedicated agents following a strict TDD pipeline.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  STRICT FEATURE PIPELINE (IMMUTABLE)                        │
+├─────────────────────────────────────────────────────────────┤
+│  1. Spec           Feature Agent writes specification       │
+│  2. Spec Review    Quality Agent reviews completeness       │
+│  3. Tests          Feature Agent writes failing tests       │
+│  4. RED Verify     Quality Agent confirms tests FAIL        │
+│  5. Implement      Feature Agent writes minimum code        │
+│  6. GREEN Verify   Quality Agent confirms tests PASS        │
+│  7. Validate       Feature Agent runs lint + typecheck      │
+│  8. Code Review    Review Agent runs /code-review           │
+│  9. Security Scan  Security Agent runs OWASP checks         │
+│  10. Branch + PR   Merger Agent creates branch and PR       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Default Team Roster:**
+
+| Agent | Role |
+|-------|------|
+| **Team Lead** | Orchestrates, assigns tasks, monitors progress (never writes code) |
+| **Quality Agent** | Verifies RED/GREEN TDD phases, enforces coverage >= 80% |
+| **Security Agent** | OWASP scanning, secrets detection, dependency audit |
+| **Code Review Agent** | Multi-engine reviews (Claude/Codex/Gemini) |
+| **Merger Agent** | Creates feature branches and PRs via `gh` CLI |
+| **Feature Agent (x N)** | One per feature, follows strict TDD pipeline |
+
+**How it works:**
+1. `/initialize-project` asks for your features
+2. Spawns 5 permanent agents + 1 feature agent per feature
+3. Creates 10-task dependency chain per feature (enforces pipeline order)
+4. All features run in parallel - shared agents handle verification as tasks unblock
+5. Each feature results in a separate PR with full pipeline results
+
+**Task dependencies make it structurally impossible to skip steps.** A feature agent cannot implement until the quality agent verifies tests fail. The merger cannot create a PR until security scan passes.
+
+```bash
+# Spawn team manually on existing project
+/spawn-team
+```
+
 ## Agentic Ad Optimization (Reddit Ads)
 
 **Run automated Reddit ad campaigns with AI-powered optimization.**
@@ -445,6 +491,7 @@ Define before you build:
 | `workspace.md` | Multi-repo workspace awareness, contract tracking, cross-repo context |
 | `commit-hygiene.md` | Atomic commits, PR size limits, commit thresholds, stacked PRs |
 | `code-deduplication.md` | Prevent semantic duplication with capability index, check-before-write |
+| `agent-teams.md` | Default agent team workflow - Team Lead, Quality, Security, Review, Merger + Feature agents |
 | `team-coordination.md` | Multi-person projects - shared state, todo claiming, handoffs, conflict prevention |
 | `security.md` | OWASP patterns, secrets management, security testing |
 | `credentials.md` | Centralized API key management from Access.txt |
@@ -777,7 +824,7 @@ Key principles:
 
 See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
 
-**Latest: v2.4.0** - 53 skills with multi-repo workspace awareness, contract tracking, and cross-repo context
+**Latest: v2.5.0** - 54 skills with Agent Teams default workflow, strict TDD pipeline, and `/spawn-team` command
 
 ## License
 
