@@ -168,7 +168,10 @@ fi
 
 # Level 3: flash provider (cheap API, ~$0.0001 per classification)
 if [ -z "$TIER" ] && [ -x "$(echo $FLASH_BIN | awk '{print $1}')" ]; then
-  RAW=$(eval "$FLASH_BIN" "$CLASSIFY_PROMPT" 2>/dev/null || true)
+  # shellcheck disable=SC2086  # FLASH_BIN is a trusted "path --flag" from config;
+  # word-splitting is intended. NO eval — the prompt stays a single quoted arg
+  # so a task containing $(...) / backticks can never be executed (command injection).
+  RAW=$($FLASH_BIN "$CLASSIFY_PROMPT" 2>/dev/null || true)
   RAW=$(echo "$RAW" | tail -1)
   if _classify_parse "$RAW"; then
     CLASSIFIER_USED="$FLASH_PROVIDER-flash"
