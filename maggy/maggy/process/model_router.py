@@ -20,8 +20,78 @@ from .model_budget import (
     MODEL_DAILY_BUDGETS,
     get_model_usage_today,
 )
-from .model_tiers import DEFAULT_TIERS
 from .models import ModelTier
+from maggy.provider_config import ProviderConfig, load_provider_config
+
+def _flash_tier(cfg: ProviderConfig) -> ModelTier:
+    """Build the flash tier from provider config."""
+    provider = cfg.flash_provider()
+    model = cfg.flash_model()
+    return ModelTier(
+        name=f"{provider}-flash",
+        provider=provider,
+        model=model,
+        cost_rank=3,
+        complexity_min=0,
+        complexity_max=5,
+        strengths=["boilerplate", "simple_features", "tests", "crud"],
+    )
+
+
+def _pro_tier(cfg: ProviderConfig) -> ModelTier:
+    """Build the pro tier from provider config."""
+    provider = cfg.pro_provider()
+    model = cfg.pro_model()
+    return ModelTier(
+        name=f"{provider}-pro",
+        provider=provider,
+        model=model,
+        cost_rank=4,
+        complexity_min=2,
+        complexity_max=8,
+        strengths=["code_generation", "debugging", "refactor", "feature"],
+    )
+
+
+def build_tiers(cfg: ProviderConfig | None = None) -> list[ModelTier]:
+    """Build the full tier list, substituting flash/pro from provider config."""
+    resolved = cfg or load_provider_config()
+    return [
+        ModelTier(
+            name="local",
+            provider="ollama",
+            model="qwen3-coder:30b-a3b-q8_0",
+            cost_rank=1,
+            complexity_min=0,
+            complexity_max=3,
+            strengths=["formatting", "simple_edits", "crud"],
+        ),
+        ModelTier(
+            name="gemini-flash-lite",
+            provider="google",
+            model="gemini-2.5-flash-lite",
+            cost_rank=2,
+            complexity_min=0,
+            complexity_max=4,
+            strengths=["bulk_extraction", "classification", "cheap_summarization"],
+        ),
+        _flash_tier(resolved),
+        _pro_tier(resolved),
+        ModelTier(
+            name="claude",
+            provider="anthropic",
+            model="claude-sonnet-4.6",
+            cost_rank=5,
+            complexity_min=6,
+            complexity_max=10,
+            strengths=["complex_reasoning", "security", "architecture"],
+        ),
+    ]
+
+
+# DEFAULT_TIERS reflects the active provider config (US sovereignty by default:
+# groq flash + together pro, no China-based providers). Computed once at import.
+DEFAULT_TIERS: list[ModelTier] = build_tiers()
 
 
 @dataclass
@@ -48,9 +118,9 @@ def route_task(
         complexity_score: 0-10 from polyphony scoring
         task_type: "bug", "feature", "refactor", "test", etc.
         security_sensitive: True for auth/billing/PII tasks
-        tiers: Custom tiers (defaults to DEFAULT_TIERS)
+        tiers: Custom tiers (defaults to build_tiers() = provider config)
     """
-    available = tiers or DEFAULT_TIERS
+    available = tiers or build_tiers()
     primaries = [
         t for t in available if t.role == "primary"
     ]
