@@ -109,6 +109,38 @@ case "$PROMPT" in
   *"use claude"*|*"use Claude"*|*"USE CLAUDE"*) exit 0 ;;
 esac
 
+# ── Hardening: keep continuation/agentic work on the capable agent ───────────
+# Signals used to detect "this prompt continues in-flight agentic work".
+TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty' 2>/dev/null || echo "")
+WORD_COUNT=$(echo "$PROMPT" | wc -w | tr -d ' ')
+_log_skip() {
+  echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"tier\":\"SKIP\",\"reason\":\"$1\",\"task\":$(echo "$PROMPT" | jq -Rs .),\"source\":\"hook\"}" \
+    >> "$LOG_FILE" 2>/dev/null || true
+}
+# Is the session mid-tool-use? A short follow-up then means "continue" and must
+# NOT be handed to a tool-less delegate (groq/qwen), which narrates and stops.
+_session_is_agentic() {
+  [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || return 1
+  tail -n 80 "$TRANSCRIPT" 2>/dev/null | grep -q '"type":"tool_use"' || return 1
+  return 0
+}
+
+LOWER_PROMPT=$(echo "$PROMPT" | tr '[:upper:]' '[:lower:]')
+TRIMMED=$(echo "$LOWER_PROMPT" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[.!?]*$//')
+# Continuation phrases ("go ahead", "ok", "yes"…) = keep doing the current work.
+case "$TRIMMED" in
+  "go ahead"|"go"|"go on"|"continue"|"continue executing"|"keep executing"|"proceed"|"keep going"|"carry on"|"do it"|"run it"|"run"|"ok"|"okay"|"k"|"yes"|"yep"|"yeah"|"yes please"|"sure"|"next"|"next step"|"start"|"begin"|"execute") _log_skip "continuation_phrase"; exit 0 ;;
+esac
+# Execution-intent prompts need tools (validate-plan, deploy, implement).
+case "$LOWER_PROMPT" in
+  *"validate plan"*|*"validate-plan"*|*"validate the plan"*|*"start executing"*|*"execute the plan"*|*"run the plan"*|*"implement the plan"*|*"execute all tasks"*|*"start with task"*|*"begin implementation"*|*"continue the execution"*) _log_skip "execution_intent"; exit 0 ;;
+esac
+# Short prompt during an already-agentic session ≈ "continue" → stay on agent.
+if [ "${WORD_COUNT:-0}" -le 6 ] 2>/dev/null && _session_is_agentic; then
+  _log_skip "short_prompt_active_session"
+  exit 0
+fi
+
 # ── Classification with cascading fallback ───────────────────────────────
 # Try: qwen3 (free) → kimi (free) → deepseek-flash (cheap) → CLAUDE (always)
 TIER=""
@@ -293,11 +325,24 @@ if [ -n "$PRIMARY_MODEL" ]; then
   CTX="${CTX} FOLLOWED MODEL: ${PRIMARY_MODEL} — the user's chosen primary; for substantial coding, prefer delegating to it over other tiers."
 fi
 
+# Delegation contract: a text reply is NOT task completion. Delegating tiers
+# (flash/pro/qwen/kimi/etc.) can only classify or narrate — if the delegate just
+# describes intent or the task needs tools/files it can't reach, do it yourself.
+case "$TIER" in
+  CLAUDE|CODEX) : ;;  # not delegated — no contract needed
+  *) CTX="${CTX} CONTRACT: a text reply from the delegate is NOT task completion. If it only narrates intent (\"I'll…\", \"please stand by\"), returns nothing actionable, or the task needs tools/files/session context the delegate can't reach, do the task yourself — do NOT relay its narration as if done." ;;
+esac
+
+# Encode CTX as a JSON string with Python — robust to invalid UTF-8 (e.g. the
+# minimax analysis truncated mid-multibyte-char by `head -c`) and any control
+# characters, which would make `jq -Rs` fail and emit invalid JSON. Never fails.
+CTX_JSON=$(printf '%s' "$CTX" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.buffer.read().decode("utf-8","replace")))' 2>/dev/null || echo '""')
+
 cat <<EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "UserPromptSubmit",
-    "additionalContext": $(echo "$CTX" | jq -Rs .)
+    "additionalContext": $CTX_JSON
   }
 }
 EOF
