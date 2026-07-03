@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from .auth import check_auth
 from maggy.provider_config import (
-    ProviderConfig,
     load_provider_config,
     save_provider_config,
     SOVEREIGNTY_BLOCKED,

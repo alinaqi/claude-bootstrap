@@ -99,27 +99,29 @@ class TestToDict:
 
 
 class TestDefaultTiers:
-    """Default model tiers: no GPT, codex is primary."""
+    """Default model tiers: no GPT, US-sovereignty default (groq/together/claude)."""
 
     def test_no_gpt_in_defaults(self):
         from maggy.process.model_router import DEFAULT_TIERS
         names = [t.name for t in DEFAULT_TIERS]
         assert "gpt" not in names
 
-    def test_codex_is_primary(self):
+    def test_claude_is_premium(self):
+        # US-sovereignty default: claude is the most-expensive (premium) tier
         from maggy.process.model_router import DEFAULT_TIERS
-        codex = [t for t in DEFAULT_TIERS if t.name == "codex"]
-        assert len(codex) == 1
-        assert codex[0].role == "primary"
+        claude = [t for t in DEFAULT_TIERS if t.name == "claude"]
+        assert len(claude) == 1
+        assert claude[0].cost_rank == max(t.cost_rank for t in DEFAULT_TIERS)
 
-    def test_codex_handles_complex(self):
+    def test_premium_handles_complex(self):
         from maggy.process.model_router import DEFAULT_TIERS
-        codex = [t for t in DEFAULT_TIERS if t.name == "codex"][0]
-        assert codex.complexity_max >= 8
+        claude = [t for t in DEFAULT_TIERS if t.name == "claude"][0]
+        assert claude.complexity_max >= 8
 
-    def test_local_kimi_handle_simple(self):
+    def test_local_and_flash_handle_simple(self):
+        # local (ollama) and the flash tier cover simple work
         from maggy.process.model_router import DEFAULT_TIERS
         local = [t for t in DEFAULT_TIERS if t.name == "local"][0]
-        kimi = [t for t in DEFAULT_TIERS if t.name == "kimi"][0]
+        flash = [t for t in DEFAULT_TIERS if t.name.endswith("-flash")][0]
         assert local.complexity_max <= 5
-        assert kimi.complexity_max <= 5
+        assert flash.complexity_max <= 5
