@@ -214,12 +214,20 @@ How to verify this is complete:
 │     └─ Run full test suite with coverage                    │
 │     └─ Verify coverage threshold (≥80%)                     │
 ├─────────────────────────────────────────────────────────────┤
-│  4. COMPLETE: Mark Done                                     │
+│  4. PROVE + COMPLETE: Show evidence, then mark done         │
 │     └─ Only after ALL validations pass                      │
-│     └─ Move todo to completed.md                            │
-│     └─ Checkpoint session state                             │
+│     └─ SHOW PROOF — paste the real test/lint/type output    │
+│        (pass/fail counts), never just "tests pass"          │
+│     └─ UI change? attach a screenshot / visual-diff         │
+│     └─ Generated content? show the actual artifact          │
+│     └─ Move todo to completed.md + checkpoint session state │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+> **Done = proven, not claimed.** A todo is only complete when the evidence is in
+> your response: real command output, a screenshot for any UI change, the actual
+> artifact for any generated content. No proof → not done. (See the
+> "Definition of Done — NON-NEGOTIABLE" section in CLAUDE.md.)
 
 #### Execution Commands by Stack
 
