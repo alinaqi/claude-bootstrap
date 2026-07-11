@@ -40,6 +40,7 @@ from maggy.api.routes_planning import router as planning_router
 from maggy.api.routes_process import router as process_router
 from maggy.api.routes_routing import router as routing_router
 from maggy.api.routes_provider_config import router as provider_config_router
+from maggy.api.routes_keys import router as keys_router
 from maggy.api.routes_blueprints import router as blueprints_router
 from maggy.api.routes_chat import router as chat_router
 from maggy.api.routes_chat_sessions import router as chat_sessions_router
@@ -349,7 +350,7 @@ _ROUTERS = (
     history_router, improve_router, lexon_router,
     mesh_router, mesh_admin_router, models_router, observability_router,
     orchestrator_router, pipeline_router, planning_router, plugins_router,
-    process_router, projects_router, provider_config_router, refresh_router, routing_router,
+    process_router, projects_router, provider_config_router, keys_router, refresh_router, routing_router,
     setup_router, shell_router, skills_router, srooter_router, pr_review_router, system_router, testing_router, users_router,
     ws_mesh_router,
 )
@@ -357,6 +358,8 @@ _ROUTERS = (
 
 def create_app() -> FastAPI:
     """Build the FastAPI application."""
+    from maggy import secrets_store
+    secrets_store.load_into_env()  # merge ~/.maggy/.env keys before config reads env
     cfg = config_mod.load_or_bootstrap()  # auto-configures on first run
     if cfg.dashboard.auth_mode == "local" and cfg.dashboard.host not in ("127.0.0.1", "localhost", "::1"):
         raise RuntimeError(

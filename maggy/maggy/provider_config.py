@@ -24,8 +24,8 @@ ROUTING_CONFIG_PATH = CONFIG_DIR / "routing.yaml"
 BIN_DIR = Path(os.environ.get("MAGGY_BIN", str(Path.home() / "bin")))
 
 SOVEREIGNTY_BLOCKED: dict[str, set[str]] = {
-    "us": {"deepseek", "kimi", "moonshot"},
-    "local": {"deepseek", "kimi", "moonshot", "groq", "together", "openai", "google", "anthropic"},
+    "us": {"deepseek", "kimi", "moonshot", "glm"},
+    "local": {"deepseek", "kimi", "moonshot", "glm", "groq", "together", "openai", "google", "anthropic"},
     "any": set(),
 }
 
@@ -34,6 +34,7 @@ _PROVIDER_TO_BIN: dict[str, str] = {
     "together": "together",
     "ollama": "ollama-coder",
     "deepseek": "deepseek",
+    "glm": "glm",
 }
 
 _SOVEREIGNTY_TIER_DEFAULTS: dict[str, dict[str, str]] = {
@@ -69,6 +70,11 @@ _DEFAULT_PROVIDERS: dict[str, ProviderSettings] = {
     "deepseek": ProviderSettings(
         model="deepseek-chat",
         api_key_env="DEEPSEEK_API_KEY",
+    ),
+    "glm": ProviderSettings(
+        model="glm-4.6",
+        api_key_env="GLM_API_KEY",
+        base_url="https://open.bigmodel.cn/api/paas/v4",
     ),
 }
 

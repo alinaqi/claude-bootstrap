@@ -36,6 +36,25 @@ class TestDefaults:
         assert cfg.pro_bin().endswith("together")
 
 
+class TestGLMProvider:
+    def test_glm_registered_by_default(self):
+        cfg = ProviderConfig()
+        assert "glm" in cfg.providers
+        assert cfg.providers["glm"].api_key_env == "GLM_API_KEY"
+
+    def test_glm_blocked_under_us(self):
+        cfg = ProviderConfig(sovereignty="us")
+        assert not cfg.is_allowed("glm")  # China-based, like deepseek/kimi
+
+    def test_glm_allowed_under_any(self):
+        cfg = ProviderConfig(sovereignty="any")
+        assert cfg.is_allowed("glm")
+
+    def test_glm_flash_bin_resolves(self):
+        cfg = ProviderConfig(sovereignty="any", tiers={"flash": "glm", "pro": "glm"})
+        assert cfg.flash_bin().endswith("glm")
+
+
 class TestSovereigntyUS:
     def test_us_blocks_deepseek(self):
         cfg = ProviderConfig(sovereignty="us")

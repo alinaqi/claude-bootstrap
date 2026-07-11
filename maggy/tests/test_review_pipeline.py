@@ -54,6 +54,52 @@ class TestCostUsd:
         assert cached < full  # cached input billed at 25%
 
 
+class TestCouncilRoster:
+    def test_terra_in_roster(self):
+        from maggy.review.config import ROSTER
+        names = {r[0] for r in ROSTER}
+        assert "Shannon" in names, "GPT-5.6 Terra ('Shannon') must be on the council"
+
+    def test_terra_entry_shape(self):
+        from maggy.review.config import ROSTER
+        entry = next(r for r in ROSTER if r[0] == "Shannon")
+        name, factory, label, need, tools = entry
+        assert label == "GPT-5.6 Terra"
+        assert need == "OPENAI_API_KEY"
+        assert tools is True  # Terra reviews with tool access
+
+    def test_terra_priced(self):
+        from maggy.review.config import PRICING_KEY, PRICING, cost_usd
+        assert PRICING_KEY["Shannon"] in PRICING
+        # priced model -> non-zero cost for real token counts
+        assert cost_usd(PRICING_KEY["Shannon"], 100_000, 10_000) > 0
+
+    def test_terra_available_with_openai_key(self, monkeypatch):
+        from maggy.review import config as review_config
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        names = {n for (n, *_rest) in review_config.available()}
+        assert "Shannon" in names
+
+    def test_terra_factory_uses_terra_slug(self, monkeypatch):
+        pytest.importorskip("pydantic_ai")
+        from maggy.review.config import _gpt_terra
+        monkeypatch.delenv("OPENAI_TERRA_MODEL", raising=False)
+        assert _gpt_terra().model_name == "gpt-5.6-terra"
+
+    def test_terra_default_reasoning_effort_high(self, monkeypatch):
+        # GPT-5.6 guide: set reasoning.effort intentionally; review is high-value.
+        pytest.importorskip("pydantic_ai")
+        from maggy.review.config import _gpt_terra
+        monkeypatch.delenv("OPENAI_TERRA_EFFORT", raising=False)
+        assert dict(_gpt_terra().settings)["openai_reasoning_effort"] == "high"
+
+    def test_terra_effort_env_override(self, monkeypatch):
+        pytest.importorskip("pydantic_ai")
+        from maggy.review.config import _gpt_terra
+        monkeypatch.setenv("OPENAI_TERRA_EFFORT", "xhigh")
+        assert dict(_gpt_terra().settings)["openai_reasoning_effort"] == "xhigh"
+
+
 class TestDecompose:
     def test_small_pr_single_chunk(self):
         pytest.importorskip("pydantic_ai")

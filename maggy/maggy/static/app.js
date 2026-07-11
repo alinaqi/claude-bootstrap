@@ -2306,6 +2306,19 @@ async function loadSettings() {
       <div id="reviewbot-body" class="text-[10px] text-gray-600"><i class="fas fa-spinner fa-spin mr-1"></i>Checking…</div>
     </div>`;
 
+    // API Keys — set / unset provider keys (stored in ~/.maggy/.env, chmod 600)
+    html += `<div class="card p-4 mb-3" id="apikeys-card">
+      <div class="text-[10px] text-gray-500 uppercase mb-2"><i class="fas fa-key mr-1"></i>API Keys</div>
+      <div class="text-[10px] text-gray-600 mb-2">Stored locally in <code>~/.maggy/.env</code> (permissions 600, never committed). Keys are shared with the CLI wrappers and — once you source that file — with <code>claude</code> &amp; <code>codex</code>.</div>
+      <div id="apikeys-body" class="text-[10px] text-gray-600"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</div>
+    </div>`;
+
+    // Data sovereignty + provider routing (which model handles flash/pro tiers)
+    html += `<div class="card p-4 mb-3" id="providerrouting-card">
+      <div class="text-[10px] text-gray-500 uppercase mb-2"><i class="fas fa-scale-balanced mr-1"></i>Data Sovereignty &amp; Routing</div>
+      <div id="providerrouting-body" class="text-[10px] text-gray-600"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</div>
+    </div>`;
+
     // AI Models section
     const clis = sys.clis || [];
     const installed = clis.filter(c => c.installed);
@@ -2447,8 +2460,115 @@ async function loadSettings() {
     loadCouncilConfig();
     loadSrooterStatus();
     loadReviewBot();
+    loadApiKeys();
+    loadProviderRouting();
   } catch (e) {
     pane.innerHTML = `<div class="card p-4 text-sm text-red-400">Detection failed: ${esc(e.message)}</div>`;
+  }
+}
+
+// ---- API Keys (set / unset / list masked) ----------------------------------
+
+async function loadApiKeys() {
+  const body = document.getElementById('apikeys-body');
+  if (!body) return;
+  try {
+    const { keys } = await api('/keys');
+    body.innerHTML = keys.map(renderKeyRow).join('');
+  } catch (e) {
+    body.innerHTML = `<span class="text-red-400">Failed to load keys: ${esc(e.message)}</span>`;
+  }
+}
+
+function renderKeyRow(k) {
+  const status = k.set
+    ? `<span class="text-green-400" title="set">${esc(k.masked)}</span>`
+    : `<span class="text-gray-600">not set</span>`;
+  const unset = k.set
+    ? `<button onclick="unsetApiKey('${esc(k.name)}')" class="btn btn-ghost text-[10px] text-red-400" title="Remove this key"><i class="fas fa-trash"></i></button>`
+    : '';
+  return `<div class="flex items-center gap-2 py-1 border-b" style="border-color:var(--border)">
+    <div class="w-40 shrink-0"><span class="text-gray-300">${esc(k.label)}</span>
+      <span class="text-[9px] text-gray-600 block">${esc(k.name)}</span></div>
+    <div class="w-28 shrink-0 text-right font-mono">${status}</div>
+    <input id="keyin-${esc(k.name)}" type="password" placeholder="paste key…"
+      class="flex-1 px-2 py-1 rounded text-xs" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border)">
+    <button onclick="setApiKey('${esc(k.name)}')" class="btn btn-primary text-[10px]">Save</button>
+    ${unset}
+  </div>`;
+}
+
+async function setApiKey(name) {
+  const input = document.getElementById(`keyin-${name}`);
+  const value = (input?.value || '').trim();
+  if (!value) { input?.focus(); return; }
+  try {
+    await api('/keys', { method: 'POST', body: JSON.stringify({ name, value }) });
+    if (input) input.value = '';
+    loadApiKeys();
+  } catch (e) {
+    alert(`Could not save ${name}: ${e.message}`);
+  }
+}
+
+async function unsetApiKey(name) {
+  if (!confirm(`Remove ${name}? Tools using it will stop working until you set it again.`)) return;
+  try {
+    await api(`/keys/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    loadApiKeys();
+  } catch (e) {
+    alert(`Could not remove ${name}: ${e.message}`);
+  }
+}
+
+// ---- Data sovereignty + provider routing -----------------------------------
+
+async function loadProviderRouting() {
+  const body = document.getElementById('providerrouting-body');
+  if (!body) return;
+  try {
+    const data = await api('/routing/provider-config');
+    body.innerHTML = renderProviderRouting(data);
+  } catch (e) {
+    body.innerHTML = `<span class="text-red-400">Failed to load routing: ${esc(e.message)}</span>`;
+  }
+}
+
+function renderProviderRouting(data) {
+  const cfg = data.config || {};
+  const opt = data.options || {};
+  const sel = (id, values, current) =>
+    `<select id="${id}" class="px-2 py-1 rounded text-xs" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border)">
+      ${(values || []).map(v => `<option value="${v}" ${v === current ? 'selected' : ''}>${v}</option>`).join('')}
+    </select>`;
+  return `<div class="grid grid-cols-3 gap-2 items-center mb-2">
+      <label class="text-[9px] text-gray-500 uppercase">Sovereignty</label>
+      <label class="text-[9px] text-gray-500 uppercase">Flash tier</label>
+      <label class="text-[9px] text-gray-500 uppercase">Pro tier</label>
+      ${sel('pr-sovereignty', opt.sovereignty, cfg.sovereignty)}
+      ${sel('pr-flash', opt.flash, (cfg.tiers || {}).flash)}
+      ${sel('pr-pro', opt.pro, (cfg.tiers || {}).pro)}
+    </div>
+    <div class="text-[9px] text-gray-600 mb-2">GLM &amp; DeepSeek are China-based — allowed only under sovereignty <code>any</code>. Per-project overrides: run <code>/route-eval</code>.</div>
+    <button onclick="saveProviderRouting()" class="btn btn-primary text-[10px]"><i class="fas fa-save mr-1"></i>Save Routing</button>
+    <span id="pr-status" class="text-[9px] ml-2"></span>`;
+}
+
+async function saveProviderRouting() {
+  const status = document.getElementById('pr-status');
+  const body = {
+    sovereignty: document.getElementById('pr-sovereignty').value,
+    tiers: {
+      flash: document.getElementById('pr-flash').value,
+      pro: document.getElementById('pr-pro').value,
+    },
+  };
+  try {
+    await api('/routing/provider-config', { method: 'POST', body: JSON.stringify(body) });
+    if (status) { status.textContent = 'Saved ✓'; status.className = 'text-[9px] ml-2 text-green-400'; }
+    loadProviderRouting();
+  } catch (e) {
+    if (status) { status.textContent = e.message; status.className = 'text-[9px] ml-2 text-red-400'; }
   }
 }
 
