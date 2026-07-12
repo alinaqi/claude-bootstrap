@@ -20,13 +20,13 @@ case "$TOOL_NAME" in
   *) exit 0 ;;
 esac
 
-# Extract file path and check for existing ReasonNodes
-FILE_PATH=$(echo "$TOOL_INPUT" | python3 -c "
-import sys, json
+# Extract file path (via env var — never double-read stdin, never crash)
+FILE_PATH=$(TOOL_INPUT="$TOOL_INPUT" python3 -c "
+import os, json
 try:
-    d = json.loads(sys.stdin) if sys.stdin.read() else {}
-    print(d.get('file_path', d.get('path', '')))
-except:
+    d = json.loads(os.environ.get('TOOL_INPUT') or '{}')
+    print((d.get('file_path') or d.get('path') or '') if isinstance(d, dict) else '')
+except Exception:
     pass" 2>/dev/null | head -1)
 
 [ -z "$FILE_PATH" ] && exit 0
@@ -44,17 +44,25 @@ fi
 # Check if ReasonNode already exists for this file
 EXISTING=$($ICPG_CMD query intent "$FILE_PATH" 2>/dev/null)
 if [ -n "$EXISTING" ]; then
-  # Already has intent — inject as context, don't create new
-  cat <<EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PreToolUse",
-    "permissionDecision": "allow",
-    "permissionDecisionReason": "Existing iCPG intents found for this file",
-    "updatedInput": $(echo "$TOOL_INPUT" | jq -c '. + {"icpg_context": "'"$(echo "$EXISTING" | head -3 | tr '\n' ' ')"'"}' 2>/dev/null || echo "$TOOL_INPUT")
-  }
-}
-EOF
+  # Already has intent — inject as context. Build the whole payload in Python so
+  # an intent containing quotes/newlines can NEVER produce malformed JSON (which
+  # Claude Code would surface as a hook error) or silently drop the context.
+  ICPG_EXISTING="$EXISTING" TOOL_INPUT="$TOOL_INPUT" python3 -c "
+import os, json
+try:
+    ti = json.loads(os.environ.get('TOOL_INPUT') or '{}')
+    if not isinstance(ti, dict):
+        ti = {}
+    ctx = ' '.join((os.environ.get('ICPG_EXISTING') or '').splitlines()[:3]).strip()
+    if ctx:
+        ti = dict(ti, icpg_context=ctx)
+    print(json.dumps({'hookSpecificOutput': {
+        'hookEventName': 'PreToolUse',
+        'permissionDecision': 'allow',
+        'permissionDecisionReason': 'Existing iCPG intents found for this file',
+        'updatedInput': ti}}))
+except Exception:
+    pass" 2>/dev/null
   exit 0
 fi
 

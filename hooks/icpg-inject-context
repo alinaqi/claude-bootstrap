@@ -52,13 +52,14 @@ if [ -n "$DRIFT" ] && [ "$DRIFT" != "No drift detected" ]; then
   CTX="$CTX\n\n⚠️ DRIFT: ${DRIFT}"
 fi
 
-# Inject as additional context
-cat <<EOF
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PreToolUse",
-    "additionalContext": $(echo "$CTX" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo "\"$CTX\"")
-  }
-}
-EOF
+# Inject as additional context. Build the whole payload in Python so the output
+# is always valid JSON or nothing — never a malformed fallback string.
+CTX="$CTX" python3 -c "
+import os, json
+ctx = os.environ.get('CTX') or ''
+if ctx.strip():
+    print(json.dumps({'hookSpecificOutput': {
+        'hookEventName': 'PreToolUse',
+        'additionalContext': ctx}}))
+" 2>/dev/null
 exit 0
