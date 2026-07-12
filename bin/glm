@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""GLM CLI — calls Zhipu GLM / BigModel API (OpenAI-compatible).
+
+Usage:
+  glm "prompt"                       # default model (GLM_MODEL or glm-4.6)
+  glm --model glm-5.2 "prompt"
+  echo "prompt" | glm                # stdin mode
+  cat file.txt | glm                 # pipe mode
+
+Config (env or ~/.maggy/.env, auto-loaded):
+  GLM_API_KEY   — required
+  GLM_MODEL     — default model (default: glm-4.6)
+  GLM_BASE_URL  — API base (default: https://open.bigmodel.cn/api/paas/v4;
+                  use https://api.z.ai/api/paas/v4 for the international endpoint)
+"""
+
+import os
+import sys
+from pathlib import Path
+
+import httpx
+
+
+def _load_maggy_env() -> None:
+    """Merge ~/.maggy/.env into the environment without clobbering shell vars."""
+    env = Path.home() / ".maggy" / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        os.environ.setdefault(name.strip(), value.strip())
+
+
+_load_maggy_env()
+
+API_KEY = os.environ.get("GLM_API_KEY", "")
+BASE_URL = os.environ.get("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+DEFAULT_MODEL = os.environ.get("GLM_MODEL", "glm-4.6")
+
+
+def main():
+    model = DEFAULT_MODEL
+    prompt = None
+
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--model" and i + 1 < len(args):
+            i += 1
+            model = args[i]
+        elif not args[i].startswith("-"):
+            prompt = args[i]
+        i += 1
+
+    if not API_KEY:
+        print("[glm] ERROR: GLM_API_KEY not set (set it in Maggy Settings or ~/.maggy/.env)",
+              file=sys.stderr)
+        sys.exit(1)
+
+    if not prompt and not sys.stdin.isatty():
+        prompt = sys.stdin.read().strip()
+
+    if not prompt:
+        print("Usage: glm [--model <model>] <prompt>", file=sys.stderr)
+        sys.exit(1)
+
+    print(call_glm(prompt, model))
+
+
+def call_glm(prompt: str, model: str) -> str:
+    try:
+        with httpx.Client(timeout=300) as client:
+            resp = client.post(
+                f"{BASE_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "max_tokens": 16000,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
+    except httpx.HTTPError as e:
+        return f"[GLM API error: {e}]"
+    except Exception as e:
+        return f"[GLM error: {e}]"
+
+
+if __name__ == "__main__":
+    main()

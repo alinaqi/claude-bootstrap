@@ -4,6 +4,50 @@ All notable changes to Maggy will be documented in this file.
 
 ---
 
+## [6.57.0] - 2026-07-11
+
+### GLM support, API-key/routing config UI, per-project routing, Terra council
+
+#### Added
+- **GPT-5.6 Terra on the review council** — new roster member "Shannon"
+  (`gpt-5.6-terra`, Responses API) with intentional reasoning effort (`high`
+  default, `OPENAI_TERRA_EFFORT` override) per the GPT-5.6 guide's review guidance.
+- **GLM / BigModel provider** — `glm` is now a first-class routing provider
+  (`glm-4.6` default, `GLM_API_KEY`, `open.bigmodel.cn` base). China-based, so
+  allowed only under `sovereignty: any`. Selectable as the flash/pro tier.
+- **Central API-key store** (`secrets_store.py`) — one source of truth at
+  `~/.maggy/.env`, with `set`/`unset`/`list` (masked) and `load_into_env`
+  (shell vars win). Loaded at startup so keys reach Maggy and the CLI wrappers.
+- **`/api/keys` REST endpoints** — GET (masked list), POST (set), DELETE (unset).
+  Raw values are never returned.
+- **Settings UI** — "API Keys" card (set/unset any provider key, masked status)
+  and "Data Sovereignty & Routing" card (sovereignty + flash/pro provider incl.
+  GLM). Everything configurable in the HTML interface.
+- **Per-project routing** (`project_routing.py` + `route_eval.py`) — private
+  per-machine profiles at `~/.claude/projects/<encoded-cwd>/routing.yaml` that
+  override the global config. `simple` profiles route everything to one cheap
+  model (e.g. GLM) but always escalate security-sensitive files/tasks to Claude;
+  `balanced`/`critical` fall through to the complexity ladder. The `/route-eval`
+  command evaluates project structure + routing history and recommends a profile
+  (show-then-confirm).
+
+#### Security
+- **Atomic 0600 credential writes** — the key store writes via `mkstemp` (created
+  0600) + `os.replace`, and forces `~/.maggy` to `0700`. Credentials never touch
+  disk at looser permissions, even briefly (fixes a TOCTOU window in the earlier
+  write-then-chmod path).
+- **Env-file injection guard** — `set_key` rejects values containing control
+  characters (newline/CR/NUL/tab). An interior newline would otherwise survive
+  `.strip()` and inject extra `KEY=VALUE` lines into `~/.maggy/.env` (e.g. override
+  `PATH`), and NUL could truncate the file. The `/api/keys` endpoint returns 400.
+
+#### Tests
+- +58 tests: `secrets_store` (15), `routes_keys` (9), `project_routing` (11),
+  `route_eval` (11), `provider_config` GLM (4), council roster/Terra (7),
+  plus a guardrail that asserts credential bytes are created at 0600.
+
+---
+
 ## [6.56.0] - 2026-07-01
 
 ### Visual validation framework + protocol hijack fix

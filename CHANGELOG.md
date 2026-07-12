@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [6.57.0] - 2026-07-11
+
+### GPT-5.6 council support, GLM executor, `/route-eval`, key/routing config
+
+#### Added
+- **GPT-5.6 support on the review council** — the multi-model reviewer now
+  includes **GPT-5.6 Terra** (`gpt-5.6-terra`, OpenAI Responses API) as a
+  first-class member alongside GPT-5.5-pro. It reviews with tool access and
+  intentional reasoning effort — `high` by default (per OpenAI's GPT-5.6 guidance
+  that code review is a high-value case), overridable with `OPENAI_TERRA_EFFORT`
+  (`none`|`low`|`medium`|`high`|`xhigh`|`max`) and `OPENAI_TERRA_MODEL`. Auto-joins
+  the council whenever `OPENAI_API_KEY` is set.
+- **`bin/glm`** — Zhipu GLM / BigModel CLI (OpenAI-compatible), matching the
+  `together`/`groq` wrappers. Self-loads `~/.maggy/.env` so keys set in the Maggy
+  Settings UI work without shell sourcing. Configurable via `GLM_MODEL`,
+  `GLM_BASE_URL` (defaults to `open.bigmodel.cn`; use `api.z.ai` for international).
+- **`/route-eval` slash command** — evaluates a project's structure and past
+  Claude/Codex routing history, then recommends a private per-machine routing
+  profile (show-then-confirm). A `simple` project can route everything through
+  one cheap model (e.g. GLM) while security-sensitive paths always escalate to
+  Claude. Fully hand-editable afterward.
+- **API keys + routing configurable from the Maggy UI** — a Settings "API Keys"
+  card (set/unset any provider key, masked) and a "Data Sovereignty & Routing"
+  card. Keys live in `~/.maggy/.env` (0600), shared with the CLI wrappers.
+
+See `maggy/CHANGELOG.md` [6.57.0] for the full detail (API-key store internals,
+per-project routing engine, and the 0600 + injection-guard credential hardening).
+
+---
+
 ## [6.56.0] - 2026-07-01
 
 ### Visual validation framework + protocol hijack fix

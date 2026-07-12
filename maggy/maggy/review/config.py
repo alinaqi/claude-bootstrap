@@ -37,6 +37,18 @@ def _gpt():
     return OpenAIResponsesModel(os.environ.get("OPENAI_REVIEW_MODEL", "gpt-5.5-pro-2026-04-23"))
 
 
+def _gpt_terra():
+    # gpt-5.6-terra is Responses-only. Per the GPT-5.6 guide, set reasoning
+    # effort intentionally — code review is a high-value case, so default high.
+    # Override with OPENAI_TERRA_EFFORT (none|low|medium|high|xhigh|max).
+    from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
+    effort = os.environ.get("OPENAI_TERRA_EFFORT", "high")
+    return OpenAIResponsesModel(
+        os.environ.get("OPENAI_TERRA_MODEL", "gpt-5.6-terra"),
+        settings=OpenAIResponsesModelSettings(openai_reasoning_effort=effort),
+    )
+
+
 # CS-legend roster: (codename, model-factory, label, required-env-key, tool_capable)
 # tool_capable=False -> reviews tool-lessly (diff embedded in the prompt).
 ROSTER = [
@@ -44,6 +56,7 @@ ROSTER = [
     ("Hopper", lambda: "google:gemini-3.1-pro-preview", "Gemini 3.1 Pro", "GEMINI_API_KEY", True),
     ("Turing", lambda: "grok:grok-3", "Grok 3", "GROK_API_KEY", True),
     ("Dijkstra", _gpt, "GPT-5.5-pro", "OPENAI_API_KEY", True),
+    ("Shannon", _gpt_terra, "GPT-5.6 Terra", "OPENAI_API_KEY", True),
     ("Knuth", lambda: "google:gemini-3.5-flash", "Gemini 3.5 Flash", "GEMINI_API_KEY", True),
 ]
 CHAIR = "Knuth"  # planner + synthesizer (cheap, tool-capable)
@@ -68,9 +81,13 @@ PRICING = {
     "deepseek": (0.28, 0.42),
     "grok": (3.00, 15.00),
     "gpt-5.5": (15.00, 120.00),
+    # gpt-5.6 tiers: sol (flagship) > terra (balance of intelligence/cost) > luna (high-volume).
+    # Terra sits below the 5.5-pro flagship. Figures are an estimate — swap in OpenAI's
+    # published Terra pricing when available (the guide states positioning, not rates).
+    "gpt-5.6-terra": (12.00, 96.00),
 }
 PRICING_KEY = {"Lovelace": "deepseek", "Hopper": "gemini-3.1-pro", "Turing": "grok",
-               "Dijkstra": "gpt-5.5", "Knuth": "gemini-3.5"}
+               "Dijkstra": "gpt-5.5", "Shannon": "gpt-5.6-terra", "Knuth": "gemini-3.5"}
 
 
 def cost_usd(model_key, input_tokens, output_tokens, cache_read_tokens=0):

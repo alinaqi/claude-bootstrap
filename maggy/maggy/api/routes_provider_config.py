@@ -34,8 +34,8 @@ async def get_config(
         "pro_bin": cfg.pro_bin(),
         "options": {
             "sovereignty": ["us", "local", "any"],
-            "flash": ["groq", "together", "ollama", "deepseek"],
-            "pro": ["together", "groq", "ollama", "deepseek"],
+            "flash": ["groq", "together", "ollama", "deepseek", "glm"],
+            "pro": ["together", "groq", "ollama", "deepseek", "glm"],
         },
         "sovereignty_blocked": {k: list(v) for k, v in SOVEREIGNTY_BLOCKED.items()},
     }
