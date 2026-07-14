@@ -61,6 +61,29 @@ Every message gets a semantic blast score (1-10), then routes to the cheapest ca
 
 The router learns from outcomes — successful tasks reinforce the routing decision.
 
+## Parallel Development (Polyphony)
+
+Run multiple agents concurrently without conflicts. Each agent session runs in its
+own Docker/OrbStack container with a **full git clone on its own branch** — six
+layers: work source → orchestrator → router → identity broker → workspace manager
+→ worker runtime.
+
+- **Auto-isolation** — a second Claude Code session in the same project
+  automatically provisions its own workspace (no setup).
+- **Container mode is the default** when Docker + the `polyphony` CLI are present;
+  falls back to native parallel agents otherwise.
+
+```bash
+polyphony init                 # one-time: create ~/.polyphony/ config
+polyphony spawn "add auth"     # create + route a task to an agent
+polyphony status               # running agents / task states
+polyphony cleanup              # remove completed workspaces
+```
+
+From Claude Code: `/polyphony-init`, `/polyphony-spawn`, `/polyphony-status`, or
+`/spawn-team` (a coordinated TDD team, container-isolated by default). Requires
+Docker or OrbStack. Full spec: [Polyphony spec](./docs/polyphony-spec.md).
+
 ## Tests
 
 ```bash
