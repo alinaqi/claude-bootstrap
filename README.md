@@ -171,6 +171,24 @@ Pick the model you "follow" once with `/model-config` — Maggy, the route-task 
 
 ---
 
+## Parallel Development (Polyphony)
+
+Run several agents at once — each in its own Docker/OrbStack container with a full git clone on its own branch, so concurrent work never collides on files or branches.
+
+- **Auto-isolation** — a second Claude Code session in the same project automatically provisions its own workspace (via the `polyphony-auto-isolate` hook). No setup.
+- **`/spawn-team`** — spawns a coordinated TDD agent team; container-isolated by default when Docker + the `polyphony` CLI are present, with a graceful fallback to native parallel agents.
+
+```bash
+polyphony init                 # one-time: create ~/.polyphony/ config
+polyphony spawn "add auth"     # create + route a task to an agent
+polyphony status               # running agents / task states
+polyphony cleanup              # remove completed workspaces
+```
+
+From Claude Code: `/polyphony-init`, `/polyphony-spawn`, `/polyphony-status`. Requires Docker or OrbStack. Full design: [Polyphony spec](maggy/docs/polyphony-spec.md).
+
+---
+
 ## Telos: Testing Beyond TDD
 
 Standard TDD tells you if your code passes tests. Telos tells you if your code fulfills its *intent*.
