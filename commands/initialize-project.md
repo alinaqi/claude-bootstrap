@@ -1027,6 +1027,18 @@ This project uses MCP-based code graph for optimized code navigation.
 ~/.claude/install-graph-tools.sh --codeql
 ```
 
+## Changelog — Required for Every Commit
+
+Every commit that changes behaviour, config, docs, or dependencies MUST update
+`CHANGELOG.md` in the **same commit**. No feature, fix, or refactor lands without
+a changelog line. See `.claude/rules/changelog.md`.
+
+- Keep a root `CHANGELOG.md` following [Keep a Changelog](https://keepachangelog.com)
+  with an `## [Unreleased]` section (Added / Changed / Fixed / Removed / Security).
+- One entry per commit, staged together with the code.
+- Exempt: pure formatting, comment typos, changes to the changelog itself.
+- On release: rename `[Unreleased]` to the version + date, start a fresh block.
+
 ## Project-Specific Patterns
 [Any specific patterns for this project]
 ```
@@ -1066,6 +1078,35 @@ Development workflow enforced by claude-bootstrap skills and ADR gate.
 - Related: _project_specs/overview.md
 ADRINIT
     echo "✓ Created docs/adr/0001-project-init.md"
+fi
+```
+
+#### Seed CHANGELOG.md
+
+```bash
+# Every project gets a changelog; every commit updates it (see rules/changelog.md)
+if [ ! -f "CHANGELOG.md" ]; then
+    cat > CHANGELOG.md << 'CHANGELOG'
+# Changelog
+
+All notable changes to this project are documented here.
+Format based on [Keep a Changelog](https://keepachangelog.com);
+this project adheres to [Semantic Versioning](https://semver.org).
+
+## [Unreleased]
+
+### Added
+- Project initialized with claude-bootstrap.
+
+### Changed
+
+### Fixed
+
+### Removed
+
+### Security
+CHANGELOG
+    echo "✓ Created CHANGELOG.md"
 fi
 ```
 

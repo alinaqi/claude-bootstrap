@@ -20,6 +20,8 @@
 - Write clear, concise commit messages
 - One logical change per commit
 - Run tests before committing
+- **Update `CHANGELOG.md` in the same commit** — every behaviour/config/docs/deps
+  change ships a changelog entry (see `rules/changelog.md`). No commit without one.
 
 ## Tools & Frameworks
 
