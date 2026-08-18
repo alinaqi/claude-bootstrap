@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [6.58.0] - 2026-08-18
+
+### Changelog discipline — every commit ships a CHANGELOG entry
+
+#### Added
+- **`rules/changelog.md`** — new conditional rule installed to `~/.claude/rules/`:
+  every commit that changes behaviour, config, docs, or dependencies MUST update a
+  `CHANGELOG.md` in the same commit (Keep a Changelog format, one entry per commit,
+  staged with the code). Formatting-only and comment-typo changes are exempt.
+- **`/initialize-project` seeds the rule into every project** — the generated
+  `CLAUDE.md` now carries a "Changelog — Required for Every Commit" section, and
+  init seeds a root `CHANGELOG.md` with a `[Unreleased]` block so the discipline
+  holds from the first commit.
+
+#### Changed
+- Bootstrap `CLAUDE.md` Git Workflow now requires a `CHANGELOG.md` update in the
+  same commit as the code.
+
+---
+
 ## [6.57.0] - 2026-07-11
 
 ### GPT-5.6 council support, GLM executor, `/route-eval`, key/routing config
