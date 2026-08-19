@@ -81,7 +81,7 @@ interface LLMCallOptions<T> {
 export async function llmCall<T>({
   prompt,
   schema,
-  model = 'claude-sonnet-4-20250514',
+  model = 'claude-sonnet-4-6',
   maxTokens = 1024,
 }: LLMCallOptions<T>): Promise<T> {
   const response = await client.messages.create({

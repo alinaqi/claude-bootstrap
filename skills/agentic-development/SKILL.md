@@ -33,7 +33,7 @@ class SearchResult(BaseModel):
     summary: str
 
 agent = Agent(
-    'claude-sonnet-4-20250514',
+    'claude-sonnet-4-6',
     result_type=list[SearchResult],
     system_prompt='You are a research assistant.',
 )
@@ -73,7 +73,7 @@ async function runAgent(prompt: string) {
 
   while (true) {
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       tools,
       messages,
@@ -625,7 +625,7 @@ class ResearchDeps(BaseModel):
     api_key: str
 
 research_agent = Agent(
-    'claude-sonnet-4-20250514',
+    'claude-sonnet-4-6',
     deps_type=ResearchDeps,
     result_type=list[SearchResult],
     system_prompt='You are a research assistant. Use tools to find information.',
@@ -672,7 +672,7 @@ class CodeReview(BaseModel):
     confidence: float = Field(ge=0, le=1, description="Confidence score")
 
 review_agent = Agent(
-    'claude-sonnet-4-20250514',
+    'claude-sonnet-4-6',
     result_type=CodeReview,
     system_prompt='Review code for quality, security, and best practices.',
 )
@@ -691,9 +691,9 @@ else:
 from pydantic_ai import Agent
 
 # Specialized agents
-planner = Agent('claude-sonnet-4-20250514', system_prompt='Create detailed plans.')
-executor = Agent('claude-sonnet-4-20250514', system_prompt='Execute tasks precisely.')
-reviewer = Agent('claude-sonnet-4-20250514', system_prompt='Review and verify work.')
+planner = Agent('claude-sonnet-4-6', system_prompt='Create detailed plans.')
+executor = Agent('claude-sonnet-4-6', system_prompt='Execute tasks precisely.')
+reviewer = Agent('claude-sonnet-4-6', system_prompt='Review and verify work.')
 
 async def orchestrate(task: str):
     # 1. Plan
@@ -717,7 +717,7 @@ async def orchestrate(task: str):
 ```python
 from pydantic_ai import Agent
 
-agent = Agent('claude-sonnet-4-20250514')
+agent = Agent('claude-sonnet-4-6')
 
 async def stream_response(prompt: str):
     async with agent.run_stream(prompt) as response:

@@ -313,7 +313,7 @@ app.on('message', async (context, state) => {
   try {
     // Call Claude API
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: `You are an AI assistant integrated into Microsoft Teams.
         Help users with their questions and tasks.
@@ -439,7 +439,7 @@ async function runAgent(userMessage: string): Promise<string> {
 
   while (true) {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: 'You are a helpful Teams assistant. Use tools when needed to help users.',
       tools,
@@ -900,7 +900,7 @@ export async function getRAGResponse(userQuery: string): Promise<string> {
 
   // 3. Generate response with context
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     system: `You are a helpful assistant for Teams. Answer questions based on the provided context.
 If the context doesn't contain relevant information, say so and provide a general response.
@@ -1188,7 +1188,7 @@ app.on('message', async (context) => {
 
   // Get AI response
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     system: 'You are a helpful Teams assistant.',
     messages: history

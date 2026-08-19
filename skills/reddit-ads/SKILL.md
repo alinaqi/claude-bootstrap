@@ -1395,7 +1395,7 @@ Return a JSON array of recommendations:
 Be aggressive with pausing poor performers to protect budget. Be conservative with scaling (only clear winners).`;
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -1674,7 +1674,7 @@ Return a JSON array of recommendations:
 Be aggressive with pausing poor performers to protect budget. Be conservative with scaling (only clear winners)."""
 
         response = self.anthropic.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6",
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -1919,7 +1919,7 @@ class MultiAgentOptimizer {
     // Run agents in sequence, each building on previous output
     for (const agent of AGENTS) {
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         system: agent.systemPrompt,
         messages: [{
