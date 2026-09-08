@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [6.58.2] - 2026-09-08
+
+### Skill frontmatter — five skills now carry name/description (fixes #55)
+
+#### Fixed
+- **`skills/autonomous-testing`, `skills/build-in-public`,
+  `skills/external-model-delegation`, `skills/model-routing`,
+  `skills/visual-validation`** — added YAML frontmatter (`name`, `description`,
+  `when-to-use`, `user-invocable`, `effort`) to each `SKILL.md`. They previously
+  started at an `#` heading with no frontmatter, so Claude Code had no `name` or
+  `description` to trigger them, and `skill_lint --fail-on error` (CI) was red.
+  `PYTHONPATH=scripts python -m skill_lint --fail-on error skills/` is now green
+  (0 errors).
+
+---
+
 ## [6.58.1] - 2026-08-21
 
 ### Retired Claude model IDs replaced in skill docs

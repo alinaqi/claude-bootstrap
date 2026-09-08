@@ -1,3 +1,11 @@
+---
+name: visual-validation
+description: Autonomous screenshot verification — captures, compares, and AI-evaluates UI changes for visual regressions
+when-to-use: When a UI or static-asset change needs visual verification before shipping
+user-invocable: false
+effort: medium
+---
+
 # Visual Validation — Autonomous Screenshot Verification
 
 ## Philosophy

@@ -1,3 +1,11 @@
+---
+name: autonomous-testing
+description: AI-driven testing agent that auto-discovers, generates, executes, evaluates, and fixes tests for any project type
+when-to-use: When setting up automated test generation or running an autonomous test-fix loop across Python, TypeScript, API, or web projects
+user-invocable: false
+effort: high
+---
+
 # Autonomous Testing Agent
 
 ## Overview

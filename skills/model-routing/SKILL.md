@@ -1,3 +1,11 @@
+---
+name: model-routing
+description: 9-tier model routing system with cascading classifier fallback and result auto-evaluation
+when-to-use: When configuring or debugging how prompts are classified and routed to the cheapest capable model
+user-invocable: false
+effort: medium
+---
+
 # Model Routing System
 
 ## How Routing Decisions Are Made

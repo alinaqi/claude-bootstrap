@@ -1,3 +1,11 @@
+---
+name: build-in-public
+description: Best practices for sharing engineering work publicly — what to post, what to withhold, and channel-specific guidance
+when-to-use: When drafting build-in-public posts, changelogs, or launch content for social channels
+user-invocable: false
+effort: low
+---
+
 # Build in Public — Best Practices
 
 ## Philosophy
