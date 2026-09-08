@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [6.58.1] - 2026-08-21
+
+### Retired Claude model IDs replaced in skill docs
+
+#### Changed
+- **`skills/agentic-development/SKILL.md`, `skills/llm-patterns/SKILL.md`,
+  `skills/ms-teams-apps/SKILL.md`, `skills/reddit-ads/SKILL.md`** — 16 occurrences of
+  `claude-sonnet-4-20250514` replaced with `claude-sonnet-4-6`. That ID was retired on
+  June 15, 2026, so the copied examples fail against the API.
+- **`skills/ai-models/SKILL.md`** — the active model catalog carried three retired IDs.
+  `opus4` now maps to `claude-opus-4-6`, `sonnet4` to `claude-sonnet-5`, and `haiku` to
+  `claude-haiku-4-5-20251001`. The model selection guide had the same stale Haiku entry
+  plus its old price, both corrected to Haiku 4.5 at $1/$5 per 1M tokens.
+
+`sonnet` and `opus` are untouched: `claude-sonnet-4-5-20250929` and
+`claude-opus-4-5-20251101` are still active per Anthropic's deprecation page.
+
+---
+
 ## [6.58.0] - 2026-08-18
 
 ### Changelog discipline — every commit ships a CHANGELOG entry

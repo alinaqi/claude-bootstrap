@@ -47,11 +47,11 @@ const CLAUDE_MODELS = {
   sonnet: 'claude-sonnet-4-5-20250929',
 
   // Previous generation (still excellent)
-  opus4: 'claude-opus-4-20250514',
-  sonnet4: 'claude-sonnet-4-20250514',
+  opus4: 'claude-opus-4-6',
+  sonnet4: 'claude-sonnet-5',
 
   // Fast & cheap - high volume tasks
-  haiku: 'claude-haiku-3-5-20241022',
+  haiku: 'claude-haiku-4-5-20251001',
 } as const;
 ```
 
@@ -86,10 +86,10 @@ claude-sonnet-4-5-20250929 (Sonnet 4.5)
 ├── Cost: $3/$15 per 1M tokens
 └── Use when: Default choice for most applications
 
-claude-haiku-3-5-20241022 (Haiku 3.5)
+claude-haiku-4-5-20251001 (Haiku 4.5)
 ├── Best for: Classification, extraction, high-volume
 ├── Context: 200K tokens
-├── Cost: $0.25/$1.25 per 1M tokens
+├── Cost: $1/$5 per 1M tokens
 └── Use when: Speed and cost matter most
 ```
 
