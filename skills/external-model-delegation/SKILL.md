@@ -1,3 +1,11 @@
+---
+name: external-model-delegation
+description: UserPromptSubmit hook pattern that classifies prompts into six cost tiers and delegates to external model CLIs
+when-to-use: When configuring or debugging prompt-based delegation to qwen3, deepseek, kimi, or codex
+user-invocable: false
+effort: medium
+---
+
 # External Model Delegation Pattern
 
 A `UserPromptSubmit` hook classifies every user prompt into one of six cost/performance tiers. The hook injects `additionalContext` instructing Claude to run a specific delegation script and return the output.
