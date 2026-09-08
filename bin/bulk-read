@@ -1,0 +1,92 @@
+#!/bin/bash
+# bulk-read — offload large / multi-file reads to a cheap worker model.
+#
+# The files are handed to a cheap model that answers a question about them and
+# returns a compact summary. The raw files never enter Claude's context, which
+# is where the token savings come from (the "context shunt" pattern).
+#
+# Usage:
+#   bulk-read "question about the files" file1 [file2 ...]
+#   cat manifest.txt | xargs bulk-read "what does the auth flow do?"
+#
+# Config (environment, or KEY=VALUE lines in ~/.claude/shunt.conf):
+#   SHUNT_MODEL   worker command (default: "deepseek --flash")
+#   SHUNT_WORKER  alias for SHUNT_MODEL (SHUNT_MODEL wins if both set)
+#
+# Contract: this is a plain CLI. It always runs when invoked directly — the
+# SHUNT on/off switch only governs the PreToolUse hook, never an explicit call.
+
+set -o pipefail
+
+CONF="${SHUNT_CONF:-$HOME/.claude/shunt.conf}"
+[ -f "$CONF" ] && . "$CONF" 2>/dev/null
+
+WORKER="${SHUNT_MODEL:-${SHUNT_WORKER:-deepseek --flash}}"
+
+usage() {
+  echo "Usage: bulk-read \"<question>\" <file> [file ...]" >&2
+  exit 2
+}
+
+QUESTION="$1"
+[ -z "$QUESTION" ] && usage
+shift
+[ "$#" -eq 0 ] && usage
+
+# Verify the worker binary exists before building a big prompt.
+WORKER_BIN="${WORKER%% *}"
+if ! command -v "$WORKER_BIN" >/dev/null 2>&1; then
+  echo "bulk-read: worker '$WORKER_BIN' not found on PATH (set SHUNT_MODEL)" >&2
+  exit 3
+fi
+
+# Build the corpus: each file wrapped in an XML boundary so the worker can cite
+# paths cleanly and never confuse one file's content for another's.
+CORPUS=""
+RAW_BYTES=0
+FILE_COUNT=0
+for f in "$@"; do
+  if [ ! -f "$f" ]; then
+    echo "bulk-read: skipping missing file: $f" >&2
+    continue
+  fi
+  body="$(cat "$f" 2>/dev/null)" || continue
+  CORPUS="${CORPUS}"$'\n'"<file path=\"$f\">"$'\n'"${body}"$'\n'"</file>"$'\n'
+  RAW_BYTES=$((RAW_BYTES + ${#body}))
+  FILE_COUNT=$((FILE_COUNT + 1))
+done
+
+if [ "$FILE_COUNT" -eq 0 ]; then
+  echo "bulk-read: no readable files given" >&2
+  exit 3
+fi
+
+PROMPT="You are a code/context reader. Answer the QUESTION using ONLY the files
+below. Output tight, structured bullets — no preamble, no prose, no restating
+the question. Cite evidence as path:line. If the answer is not in the files, say
+'NOT FOUND IN PROVIDED FILES' and nothing else.
+
+QUESTION:
+${QUESTION}
+
+FILES:
+${CORPUS}"
+
+OUT="$(printf '%s' "$PROMPT" | $WORKER 2>/dev/null)"
+STATUS=$?
+if [ "$STATUS" -ne 0 ] || [ -z "$OUT" ]; then
+  echo "bulk-read: worker '$WORKER' returned no output (exit $STATUS)" >&2
+  exit 4
+fi
+
+printf '%s\n' "$OUT"
+
+# Token report (approx: ~4 chars/token) on stderr so it never pollutes the answer.
+SUM_BYTES=${#OUT}
+RAW_TOK=$((RAW_BYTES / 4))
+SUM_TOK=$((SUM_BYTES / 4))
+if [ "$RAW_TOK" -gt 0 ]; then
+  SAVED=$(( (RAW_TOK - SUM_TOK) * 100 / RAW_TOK ))
+  echo "[bulk-read] $FILE_COUNT file(s) via '$WORKER': ~${RAW_TOK} tok raw -> ~${SUM_TOK} tok summary (~${SAVED}% saved)" >&2
+fi
+exit 0

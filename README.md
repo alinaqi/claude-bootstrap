@@ -169,6 +169,24 @@ claude        # now routed through srooter
 
 Pick the model you "follow" once with `/model-config` — Maggy, the route-task hooks, and srooter all honor the same choice. Trivial asks stay on the cheap/local tier; real coding goes to your primary model (e.g. MiniMax-M2.5).
 
+### Context shunt — cheap reads, small context
+
+Gateway routing picks the model for a *turn*. The **context shunt** trims what a
+single *tool call* pulls in when the turn is legitimately on your main model: a
+PreToolUse hook (`context-shunt-gate`) catches reads of large files — code *or*
+logs/generated output — and steers them to `bulk-read`, which hands the files to
+a cheap worker (default `deepseek --flash`) and returns a compact summary. The
+raw bytes never enter context. For code symbols it points at the graph
+(`get_code_snippet`) instead. Inspired by Spotify's "shunt" plugin.
+
+Fully configurable in `~/.claude/shunt.conf` (or env): `SHUNT=on|off`,
+`SHUNT_MIN_LINES` (default 350), `SHUNT_MODE=suggest|block|off` (default
+`suggest` — nudges, never blocks), `SHUNT_MODEL`. See the `context-shunt` skill.
+
+```bash
+bulk-read "how does token refresh work?" src/auth/session.ts src/auth/refresh.ts
+```
+
 ---
 
 ## Parallel Development (Polyphony)

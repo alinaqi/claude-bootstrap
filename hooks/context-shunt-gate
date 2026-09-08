@@ -1,0 +1,94 @@
+#!/bin/bash
+# context-shunt-gate — PreToolUse hook. Keeps large reads out of Claude's
+# context and nudges code discovery toward the code graph.
+#
+# Supersedes the older cbm-code-discovery-gate: it keeps the once-per-session
+# graph nudge AND adds size-aware handling that also covers large *non-code*
+# reads (logs, generated files, long markdown) — the case whole-prompt routing
+# (srooter/route-task) can't reach because the turn is already on Claude.
+#
+# Two independent, configurable behaviours:
+#   A. Graph nudge  — first Grep/Glob/Read/Search per session -> point at
+#                     codebase-memory-mcp (deterministic, free, no fidelity loss).
+#   B. Large read   — a Read (or a `cat`/`head`/`tail`/`less` Bash call) on a
+#                     file over SHUNT_MIN_LINES -> steer to `bulk-read` so the
+#                     file is summarised by a cheap worker instead of dumped
+#                     into context.
+#
+# Config (environment, or KEY=VALUE lines in ~/.claude/shunt.conf):
+#   SHUNT              on|off        master switch          (default on)
+#   SHUNT_MIN_LINES    integer       large-read threshold   (default 350)
+#   SHUNT_MODE         suggest|block|off  large-read action (default suggest)
+#   SHUNT_GRAPH_NUDGE  on|off        once-per-session nudge (default on)
+#
+# Contract: FAIL-OPEN. Any parse/error path exits 0 with no output so a bug here
+# can never block the session. "block" is a deliberate, configured decision
+# (exit 2, message on stderr); "suggest" emits valid PreToolUse JSON and allows.
+# No `set -euo pipefail`.
+
+INPUT=$(cat 2>/dev/null || true)
+
+CONF="${SHUNT_CONF:-$HOME/.claude/shunt.conf}"
+[ -f "$CONF" ] && . "$CONF" 2>/dev/null
+
+SHUNT="${SHUNT:-on}"
+[ "$SHUNT" = "off" ] && exit 0
+
+MIN_LINES="${SHUNT_MIN_LINES:-350}"
+MODE="${SHUNT_MODE:-suggest}"
+GRAPH_NUDGE="${SHUNT_GRAPH_NUDGE:-on}"
+case "$MIN_LINES" in ''|*[!0-9]*) MIN_LINES=350 ;; esac
+
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null || echo "")
+[ -z "$TOOL_NAME" ] && exit 0
+
+# --- Resolve a candidate file path (Read tool, or a simple read-only Bash cmd)
+FILE_PATH=""
+case "$TOOL_NAME" in
+  Read)
+    FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null || echo "")
+    ;;
+  Bash)
+    CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null || echo "")
+    # Only treat plain read commands as read targets; ignore pipelines that do work.
+    if echo "$CMD" | grep -qE '^\s*(cat|head|tail|less|more)\s+'; then
+      FILE_PATH=$(echo "$CMD" | grep -oE '(cat|head|tail|less|more)\s+[^ |;&<>]+' | head -1 | awk '{print $2}')
+      FILE_PATH="${FILE_PATH/#\~/$HOME}"
+    fi
+    ;;
+esac
+
+# --- B. Large-read shunt (only when we have a real, oversized file)
+if [ -n "$FILE_PATH" ] && [ -f "$FILE_PATH" ] && [ "$MODE" != "off" ]; then
+  LINES=$(wc -l < "$FILE_PATH" 2>/dev/null | tr -d ' ')
+  case "$LINES" in ''|*[!0-9]*) LINES=0 ;; esac
+  if [ "$LINES" -gt "$MIN_LINES" ]; then
+    MSG="Large file ($LINES lines > $MIN_LINES). Don't read it raw into context. For a QUESTION about it, run: bulk-read \"<question>\" \"$FILE_PATH\" (cheap worker summarises it). For a code symbol, prefer get_code_snippet(qualified_name). Read raw only if you must edit this exact file."
+    if [ "$MODE" = "block" ]; then
+      echo "$MSG" >&2
+      exit 2
+    fi
+    # suggest: allow, but surface the nudge
+    MSG="$MSG" jq -n --arg r "$MSG" \
+      '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"allow",permissionDecisionReason:$r}}' \
+      2>/dev/null || true
+    exit 0
+  fi
+fi
+
+# --- A. Once-per-session code-discovery graph nudge
+if [ "$GRAPH_NUDGE" = "on" ]; then
+  case "$TOOL_NAME" in
+    Grep|Glob|Read|Search)
+      GATE="/tmp/cbm-code-discovery-gate-$PPID"
+      find /tmp -name 'cbm-code-discovery-gate-*' -mtime +1 -delete 2>/dev/null
+      if [ ! -f "$GATE" ]; then
+        touch "$GATE" 2>/dev/null
+        echo 'For code discovery, use codebase-memory-mcp first: search_graph(name_pattern) for functions/classes, trace_path() for call chains, get_code_snippet(qualified_name) to read source. If not indexed, run index_repository. Fall back to Grep/Glob/Read for text content only. If you need Grep, retry.' >&2
+        exit 2
+      fi
+      ;;
+  esac
+fi
+
+exit 0
