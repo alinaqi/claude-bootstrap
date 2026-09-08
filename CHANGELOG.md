@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [6.59.0] - 2026-09-08
+
+### Context shunt — cheap reads, small context (+ a tightened read gate)
+
+#### Added
+- **`bin/bulk-read`** — hands large / multi-file reads to a cheap worker model
+  (default `deepseek --flash`, configurable via `SHUNT_MODEL`) and returns a
+  compact, cited summary; the raw files never enter Claude's context. Prints a
+  token-savings report to stderr. Inspired by Spotify's "shunt" plugin.
+- **`hooks/context-shunt-gate`** — configurable, **size-aware** PreToolUse hook
+  that supersedes the old size-blind `cbm-code-discovery-gate`. Steers reads of
+  large files (code *or* logs/generated output, via `Read` or a `cat`/`head`/
+  `tail` Bash call) to `bulk-read`, and keeps the once-per-session code-graph
+  nudge. Fail-open (a bug can never wedge the session).
+- **`skills/context-shunt/SKILL.md`** — when to read raw vs shunt vs graph.
+- **`templates/shunt.conf`** — config seeded to `~/.claude/shunt.conf`:
+  `SHUNT` (on/off), `SHUNT_MIN_LINES` (default 350), `SHUNT_MODE`
+  (`suggest`/`block`/`off`, default `suggest` — nudges, never blocks),
+  `SHUNT_GRAPH_NUDGE`, `SHUNT_MODEL`.
+
+#### Changed
+- `templates/settings.json` registers `context-shunt-gate` on `Read|Grep|Glob|Search`
+  and `Bash`, so `/initialize-project` projects get it. `install.sh` ships the
+  hook, `bulk-read`, and the config (non-destructively).
+
+This is deliberately orthogonal to srooter / `route-task` (which route whole
+turns): the shunt only trims what a single tool call pulls in when the turn is
+already on the main model — the one slice whole-turn routing can't reach.
+
+#### Tests
+- `tests/test_context_shunt.py` — 15 cases: fail-open on bad input, block/suggest/off
+  modes, small-read passthrough, Bash `cat` gating, non-read commands ignored, the
+  graph nudge, and `bulk-read` guards + corpus piping.
+
+---
+
 ## [6.58.2] - 2026-09-08
 
 ### Skill frontmatter — five skills now carry name/description (fixes #55)

@@ -93,6 +93,11 @@ cp "$SCRIPT_DIR/templates/"* "$CLAUDE_DIR/templates/" 2>/dev/null || true
 chmod +x "$CLAUDE_DIR/templates/"*.sh 2>/dev/null || true
 echo "✓ Installed templates (CLAUDE.md, AGENTS.md, CLAUDE.local.md, settings.json, config.toml, and all hook scripts)"
 
+# Seed the active context-shunt config (non-destructive — never clobber edits).
+# The context-shunt-gate hook + bulk-read script read ~/.claude/shunt.conf.
+cp -n "$SCRIPT_DIR/templates/shunt.conf" "$CLAUDE_DIR/shunt.conf" 2>/dev/null || true
+echo "✓ Context-shunt ready (hook: context-shunt-gate, worker: bulk-read, config: ~/.claude/shunt.conf)"
+
 # Cross-tool config installation
 if echo "$DETECTED_AGENTS" | grep -q "kimi"; then
     mkdir -p "$HOME/.kimi"

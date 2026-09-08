@@ -60,6 +60,28 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Read|Grep|Glob|Search",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$HOME/.claude/hooks/context-shunt-gate\" ]; then exec \"$HOME/.claude/hooks/context-shunt-gate\"; fi; exit 0",
+            "timeout": 3,
+            "statusMessage": "Checking read size / code-graph nudge..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -x \"$HOME/.claude/hooks/context-shunt-gate\" ]; then exec \"$HOME/.claude/hooks/context-shunt-gate\"; fi; exit 0",
+            "timeout": 3,
+            "statusMessage": "Checking read size..."
+          }
+        ]
+      },
+      {
         "hooks": [
           {
             "type": "command",
